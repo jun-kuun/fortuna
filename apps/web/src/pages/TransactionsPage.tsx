@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsApi, assetsApi, type Transaction } from '@/lib/api';
-import { formatCurrency, ASSET_TYPE_LABELS, toCommaString, fromCommaString } from '@/lib/utils';
+import { formatCurrency, ASSET_TYPE_LABELS, ASSET_TYPE_FIELD_CONFIG, toCommaString, fromCommaString } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,12 +85,16 @@ export default function TransactionsPage() {
     },
   });
 
+  const selectedAsset = assets.find((a) => a.id === form.assetId);
+  const formConfig = ASSET_TYPE_FIELD_CONFIG[selectedAsset?.type ?? ''];
+
   function handleSubmit() {
-    if (!form.assetId || !form.quantity || !form.price) return;
+    if (!form.assetId || !form.price) return;
+    if (!formConfig?.hideQuantity && !form.quantity) return;
     createMutation.mutate({
       assetId: form.assetId,
       type: form.type,
-      quantity: Number(fromCommaString(form.quantity)),
+      quantity: formConfig?.hideQuantity ? 1 : Number(fromCommaString(form.quantity)),
       price: Number(fromCommaString(form.price)),
       fee: Number(fromCommaString(form.fee)),
       date: form.date,
@@ -158,7 +162,9 @@ export default function TransactionsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              transactions.map((tx) => (
+              transactions.map((tx) => {
+                const txConfig = ASSET_TYPE_FIELD_CONFIG[tx.asset?.type ?? ''];
+                return (
                 <TableRow key={tx.id}>
                   <TableCell className="whitespace-nowrap">
                     {new Date(tx.date).toLocaleDateString('ko-KR')}
@@ -175,11 +181,11 @@ export default function TransactionsPage() {
                     <Badge
                       variant={tx.type === 'BUY' ? 'default' : 'destructive'}
                     >
-                      {tx.type === 'BUY' ? '매수' : '매도'}
+                      {txConfig?.transactionLabels[tx.type] ?? (tx.type === 'BUY' ? '매수' : '매도')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {tx.quantity.toLocaleString('ko-KR')}
+                    {txConfig?.hideQuantity ? '-' : tx.quantity.toLocaleString('ko-KR')}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(tx.price, tx.asset?.currency)}
@@ -205,7 +211,8 @@ export default function TransactionsPage() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -244,8 +251,8 @@ export default function TransactionsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="BUY">매수</SelectItem>
-                    <SelectItem value="SELL">매도</SelectItem>
+                    <SelectItem value="BUY">{formConfig?.transactionLabels.BUY ?? '매수'}</SelectItem>
+                    <SelectItem value="SELL">{formConfig?.transactionLabels.SELL ?? '매도'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -259,20 +266,9 @@ export default function TransactionsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            {formConfig?.hideQuantity ? (
               <div>
-                <Label>수량</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={form.quantity}
-                  onChange={(e) => setForm({ ...form, quantity: toCommaString(e.target.value) })}
-                  placeholder="0"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>단가</Label>
+                <Label>{formConfig?.avgCostPriceLabel ?? '금액'}</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -282,7 +278,32 @@ export default function TransactionsPage() {
                   className="mt-1"
                 />
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{formConfig?.quantityLabel ?? '수량'}</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.quantity}
+                    onChange={(e) => setForm({ ...form, quantity: toCommaString(e.target.value) })}
+                    placeholder="0"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>{formConfig?.avgCostPriceLabel ?? '단가'}</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.price}
+                    onChange={(e) => setForm({ ...form, price: toCommaString(e.target.value) })}
+                    placeholder="0"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <Label>수수료</Label>
               <Input
@@ -308,7 +329,7 @@ export default function TransactionsPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>취소</Button>
             <Button
               onClick={handleSubmit}
-              disabled={!form.assetId || !form.quantity || !form.price || createMutation.isPending}
+              disabled={!form.assetId || (!formConfig?.hideQuantity && !form.quantity) || !form.price || createMutation.isPending}
             >
               추가
             </Button>

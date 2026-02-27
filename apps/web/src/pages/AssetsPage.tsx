@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assetsApi, type Asset } from '@/lib/api';
-import { formatCurrency, formatPercent, getReturnColor, ASSET_TYPE_LABELS, toCommaString, fromCommaString } from '@/lib/utils';
+import { formatCurrency, formatPercent, getReturnColor, ASSET_TYPE_LABELS, ASSET_TYPE_FIELD_CONFIG, toCommaString, fromCommaString } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -114,10 +114,11 @@ export default function AssetsPage() {
     } else if (dialogMode === 'edit' && selectedAsset) {
       updateMutation.mutate({ id: selectedAsset.id, data: form });
     } else if (dialogMode === 'updatePrice' && selectedAsset) {
+      const fieldConfig = ASSET_TYPE_FIELD_CONFIG[selectedAsset.type];
       updateHoldingMutation.mutate({
         id: selectedAsset.id,
         data: {
-          quantity: Number(fromCommaString(holdingForm.quantity)),
+          quantity: fieldConfig?.hideQuantity ? 1 : Number(fromCommaString(holdingForm.quantity)),
           avgCostPrice: Number(fromCommaString(holdingForm.avgCostPrice)),
           currentPrice: Number(fromCommaString(holdingForm.currentPrice)),
         },
@@ -167,6 +168,7 @@ export default function AssetsPage() {
             ) : (
               assets.map((asset) => {
                 const holding = asset.holding;
+                const config = ASSET_TYPE_FIELD_CONFIG[asset.type];
                 const currentValue = (holding?.quantity ?? 0) * (holding?.currentPrice ?? 0);
                 const totalCost = (holding?.quantity ?? 0) * (holding?.avgCostPrice ?? 0);
                 const returnAmount = currentValue - totalCost;
@@ -182,7 +184,7 @@ export default function AssetsPage() {
                     </TableCell>
                     <TableCell>{asset.currency}</TableCell>
                     <TableCell className="text-right">
-                      {holding?.quantity?.toLocaleString('ko-KR') ?? 0}
+                      {config?.hideQuantity ? '-' : (holding?.quantity?.toLocaleString('ko-KR') ?? 0)}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(holding?.avgCostPrice ?? 0, asset.currency)}
@@ -301,38 +303,45 @@ export default function AssetsPage() {
           <DialogHeader>
             <DialogTitle>보유 현황 업데이트 - {selectedAsset?.name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>보유 수량</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={holdingForm.quantity}
-                onChange={(e) => setHoldingForm({ ...holdingForm, quantity: toCommaString(e.target.value) })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>평균 매수 단가</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={holdingForm.avgCostPrice}
-                onChange={(e) => setHoldingForm({ ...holdingForm, avgCostPrice: toCommaString(e.target.value) })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>현재가</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={holdingForm.currentPrice}
-                onChange={(e) => setHoldingForm({ ...holdingForm, currentPrice: toCommaString(e.target.value) })}
-                className="mt-1"
-              />
-            </div>
-          </div>
+          {(() => {
+            const fieldConfig = ASSET_TYPE_FIELD_CONFIG[selectedAsset?.type ?? ''];
+            return (
+              <div className="space-y-4">
+                {!fieldConfig?.hideQuantity && (
+                  <div>
+                    <Label>{fieldConfig?.quantityLabel ?? '보유 수량'}</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={holdingForm.quantity}
+                      onChange={(e) => setHoldingForm({ ...holdingForm, quantity: toCommaString(e.target.value) })}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+                <div>
+                  <Label>{fieldConfig?.avgCostPriceLabel ?? '평균 매수 단가'}</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={holdingForm.avgCostPrice}
+                    onChange={(e) => setHoldingForm({ ...holdingForm, avgCostPrice: toCommaString(e.target.value) })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>{fieldConfig?.currentPriceLabel ?? '현재가'}</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={holdingForm.currentPrice}
+                    onChange={(e) => setHoldingForm({ ...holdingForm, currentPrice: toCommaString(e.target.value) })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogMode(null)}>취소</Button>
             <Button onClick={handleSubmit} disabled={updateHoldingMutation.isPending}>
