@@ -1,0 +1,320 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { transactionsApi, assetsApi, type Transaction } from '@/lib/api';
+import { formatCurrency, ASSET_TYPE_LABELS, toCommaString, fromCommaString } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Plus, Trash2 } from 'lucide-react';
+
+export default function TransactionsPage() {
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [filterAssetId, setFilterAssetId] = useState<string>('all');
+
+  const today = new Date().toISOString().split('T')[0];
+  const [form, setForm] = useState({
+    assetId: '',
+    type: 'BUY' as 'BUY' | 'SELL',
+    quantity: '',
+    price: '',
+    fee: '0',
+    date: today,
+    memo: '',
+  });
+
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ['transactions', filterAssetId],
+    queryFn: () =>
+      transactionsApi.getAll(filterAssetId !== 'all' ? filterAssetId : undefined),
+  });
+
+  const { data: assets = [] } = useQuery({
+    queryKey: ['assets'],
+    queryFn: assetsApi.getAll,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: transactionsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      setDialogOpen(false);
+      setForm({
+        assetId: '',
+        type: 'BUY',
+        quantity: '',
+        price: '',
+        fee: '0',
+        date: today,
+        memo: '',
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: transactionsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    },
+  });
+
+  function handleSubmit() {
+    if (!form.assetId || !form.quantity || !form.price) return;
+    createMutation.mutate({
+      assetId: form.assetId,
+      type: form.type,
+      quantity: Number(fromCommaString(form.quantity)),
+      price: Number(fromCommaString(form.price)),
+      fee: Number(fromCommaString(form.fee)),
+      date: form.date,
+      memo: form.memo || undefined,
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">거래 내역</h2>
+          <p className="text-gray-500 mt-1">매수/매도 기록을 관리하세요</p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          거래 추가
+        </Button>
+      </div>
+
+      {/* Filter */}
+      <div className="flex items-center gap-3">
+        <Label className="whitespace-nowrap">자산 필터:</Label>
+        <Select value={filterAssetId} onValueChange={setFilterAssetId}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체</SelectItem>
+            {assets.map((a) => (
+              <SelectItem key={a.id} value={a.id}>
+                {a.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="bg-white rounded-lg border shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>날짜</TableHead>
+              <TableHead>자산</TableHead>
+              <TableHead>유형</TableHead>
+              <TableHead className="text-right">수량</TableHead>
+              <TableHead className="text-right">단가</TableHead>
+              <TableHead className="text-right">수수료</TableHead>
+              <TableHead className="text-right">거래금액</TableHead>
+              <TableHead>메모</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-gray-400 py-12">
+                  로딩 중...
+                </TableCell>
+              </TableRow>
+            ) : transactions.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-gray-400 py-12">
+                  거래 내역이 없습니다
+                </TableCell>
+              </TableRow>
+            ) : (
+              transactions.map((tx) => (
+                <TableRow key={tx.id}>
+                  <TableCell className="whitespace-nowrap">
+                    {new Date(tx.date).toLocaleDateString('ko-KR')}
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{tx.asset?.name ?? '-'}</div>
+                      <div className="text-xs text-gray-400">
+                        {tx.asset ? (ASSET_TYPE_LABELS[tx.asset.type] ?? tx.asset.type) : ''}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={tx.type === 'BUY' ? 'default' : 'destructive'}
+                    >
+                      {tx.type === 'BUY' ? '매수' : '매도'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {tx.quantity.toLocaleString('ko-KR')}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(tx.price, tx.asset?.currency)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(tx.fee, tx.asset?.currency)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(tx.quantity * tx.price, tx.asset?.currency)}
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-500">{tx.memo ?? '-'}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (confirm('이 거래 내역을 삭제할까요?')) {
+                          deleteMutation.mutate(tx.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Create Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>거래 추가</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>자산</Label>
+              <Select value={form.assetId} onValueChange={(v) => setForm({ ...form, assetId: v })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="자산 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assets.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} ({ASSET_TYPE_LABELS[a.type] ?? a.type})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>거래 유형</Label>
+                <Select
+                  value={form.type}
+                  onValueChange={(v: 'BUY' | 'SELL') => setForm({ ...form, type: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BUY">매수</SelectItem>
+                    <SelectItem value="SELL">매도</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>거래일</Label>
+                <Input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>수량</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.quantity}
+                  onChange={(e) => setForm({ ...form, quantity: toCommaString(e.target.value) })}
+                  placeholder="0"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>단가</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: toCommaString(e.target.value) })}
+                  placeholder="0"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>수수료</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={form.fee}
+                onChange={(e) => setForm({ ...form, fee: toCommaString(e.target.value) })}
+                placeholder="0"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>메모 (선택)</Label>
+              <Input
+                value={form.memo}
+                onChange={(e) => setForm({ ...form, memo: e.target.value })}
+                placeholder="메모를 입력하세요"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>취소</Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!form.assetId || !form.quantity || !form.price || createMutation.isPending}
+            >
+              추가
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
