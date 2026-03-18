@@ -95,4 +95,85 @@ export const transactionsApi = {
   delete: (id: string) => api.delete(`/transactions/${id}`).then((r) => r.data),
 };
 
+// Strategy
+export interface StrategyTemplate {
+  id: string;
+  name: string;
+  description: string;
+  allocations: Record<string, number>;
+}
+
+export interface StrategyProfile {
+  id: string;
+  name: string;
+  allocations: Record<string, number>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RebalanceResult {
+  assetType: string;
+  currentValue: number;
+  currentPercent: number;
+  targetValue: number;
+  targetPercent: number;
+  diff: number;
+  action: 'BUY' | 'SELL' | 'HOLD';
+}
+
+export interface ReturnHistoryPoint {
+  date: string;
+  totalValue: number;
+  totalCost: number;
+  returnRate: number;
+  byType: Record<string, { value: number; cost: number }>;
+}
+
+export interface InvestmentGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  targetDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GoalProjection {
+  goalId: string;
+  goalName: string;
+  currentValue: number;
+  targetAmount: number;
+  targetDate: string;
+  projectedFinalValue: number;
+  cagr: number;
+  onTrack: boolean;
+  shortfall: number;
+  monthlyProjections: Array<{ date: string; value: number }>;
+}
+
+export const strategyApi = {
+  getTemplates: () =>
+    api.get<StrategyTemplate[]>('/strategy/templates').then((r) => r.data),
+  getProfiles: () =>
+    api.get<StrategyProfile[]>('/strategy/profiles').then((r) => r.data),
+  createProfile: (data: { name: string; allocations: Record<string, number> }) =>
+    api.post<StrategyProfile>('/strategy/profiles', data).then((r) => r.data),
+  updateProfile: (id: string, data: { name?: string; allocations?: Record<string, number> }) =>
+    api.patch<StrategyProfile>(`/strategy/profiles/${id}`, data).then((r) => r.data),
+  deleteProfile: (id: string) =>
+    api.delete(`/strategy/profiles/${id}`).then((r) => r.data),
+  rebalance: (allocations: Record<string, number>) =>
+    api.post<RebalanceResult[]>('/strategy/rebalance', { allocations }).then((r) => r.data),
+  getReturnHistory: (period: 'monthly' | 'quarterly' = 'monthly') =>
+    api.get<ReturnHistoryPoint[]>('/strategy/return-history', { params: { period } }).then((r) => r.data),
+  getGoals: () =>
+    api.get<InvestmentGoal[]>('/strategy/goals').then((r) => r.data),
+  createGoal: (data: { name: string; targetAmount: number; targetDate: string }) =>
+    api.post<InvestmentGoal>('/strategy/goals', data).then((r) => r.data),
+  deleteGoal: (id: string) =>
+    api.delete(`/strategy/goals/${id}`).then((r) => r.data),
+  getGoalProjection: (id: string) =>
+    api.get<GoalProjection>(`/strategy/goals/${id}/projection`).then((r) => r.data),
+};
+
 export default api;
