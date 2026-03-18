@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsApi, assetsApi, type Transaction } from '@/lib/api';
-import { formatCurrency, ASSET_TYPE_LABELS, ASSET_TYPE_FIELD_CONFIG, toCommaString, fromCommaString } from '@/lib/utils';
+import { formatCurrency, formatDate, ASSET_TYPE_LABELS, ASSET_TYPE_FIELD_CONFIG, toCommaString, fromCommaString } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Hash, ArrowDownCircle, ArrowUpCircle, Receipt } from 'lucide-react';
 
 export default function TransactionsPage() {
   const queryClient = useQueryClient();
@@ -102,6 +103,17 @@ export default function TransactionsPage() {
     });
   }
 
+  const stats = useMemo(() => {
+    let buyTotal = 0, sellTotal = 0, feeTotal = 0;
+    for (const tx of transactions) {
+      const amount = tx.quantity * tx.price;
+      if (tx.type === 'BUY') buyTotal += amount;
+      else sellTotal += amount;
+      feeTotal += tx.fee;
+    }
+    return { count: transactions.length, buyTotal, sellTotal, feeTotal };
+  }, [transactions]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -113,6 +125,62 @@ export default function TransactionsPage() {
           <Plus className="h-4 w-4 mr-2" />
           거래 추가
         </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                <Hash className="h-4 w-4 text-slate-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">총 거래 건수</p>
+                <p className="text-xl font-bold">{stats.count}건</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <ArrowDownCircle className="h-4 w-4 text-red-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">총 매수액</p>
+                <p className="text-xl font-bold text-red-500 truncate">{formatCurrency(stats.buyTotal)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <ArrowUpCircle className="h-4 w-4 text-blue-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">총 매도액</p>
+                <p className="text-xl font-bold text-blue-500 truncate">{formatCurrency(stats.sellTotal)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <Receipt className="h-4 w-4 text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">총 수수료</p>
+                <p className="text-xl font-bold truncate">{formatCurrency(stats.feeTotal)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filter */}
@@ -165,9 +233,9 @@ export default function TransactionsPage() {
               transactions.map((tx) => {
                 const txConfig = ASSET_TYPE_FIELD_CONFIG[tx.asset?.type ?? ''];
                 return (
-                <TableRow key={tx.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {new Date(tx.date).toLocaleDateString('ko-KR')}
+                <TableRow key={tx.id} className="hover:bg-gray-50">
+                  <TableCell className="whitespace-nowrap text-gray-600">
+                    {formatDate(tx.date)}
                   </TableCell>
                   <TableCell>
                     <div>
@@ -179,7 +247,7 @@ export default function TransactionsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={tx.type === 'BUY' ? 'default' : 'destructive'}
+                      className={tx.type === 'BUY' ? 'bg-red-100 text-red-700 hover:bg-red-100' : 'bg-blue-100 text-blue-700 hover:bg-blue-100'}
                     >
                       {txConfig?.transactionLabels[tx.type] ?? (tx.type === 'BUY' ? '매수' : '매도')}
                     </Badge>
@@ -193,8 +261,8 @@ export default function TransactionsPage() {
                   <TableCell className="text-right">
                     {formatCurrency(tx.fee, tx.asset?.currency)}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(tx.quantity * tx.price, tx.asset?.currency)}
+                  <TableCell className={`text-right font-medium ${tx.type === 'BUY' ? 'text-red-500' : 'text-blue-500'}`}>
+                    {tx.type === 'SELL' ? '+' : '-'}{formatCurrency(tx.quantity * tx.price, tx.asset?.currency)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-500">{tx.memo ?? '-'}</TableCell>
                   <TableCell>

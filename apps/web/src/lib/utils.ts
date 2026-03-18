@@ -68,9 +68,32 @@ export const ASSET_TYPE_FIELD_CONFIG: Record<string, {
   OVERSEAS_STOCK: { quantityLabel: '보유 수량',  avgCostPriceLabel: '평균 매수 단가', currentPriceLabel: '현재가',       hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
   REAL_ESTATE:    { quantityLabel: '보유 수',    avgCostPriceLabel: '매입가',         currentPriceLabel: '현재 시세',    hideQuantity: false, transactionLabels: { BUY: '매입', SELL: '매각' } },
   DEPOSIT:        { quantityLabel: '',           avgCostPriceLabel: '원금',           currentPriceLabel: '현재 평가액',  hideQuantity: true,  transactionLabels: { BUY: '가입', SELL: '해지' } },
-  GOLD:           { quantityLabel: '보유량(g)',  avgCostPriceLabel: '매입 단가(g)',   currentPriceLabel: '현재 시세(g)', hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
+  GOLD:           { quantityLabel: '보유량(g)',  avgCostPriceLabel: '매입 단가',      currentPriceLabel: '현재 시세',    hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
   OTHER:          { quantityLabel: '수량',       avgCostPriceLabel: '매입 단가',      currentPriceLabel: '현재가',       hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
 };
+
+export const ASSET_TYPE_BG_COLORS: Record<string, string> = {
+  KOREAN_STOCK: 'bg-blue-100 text-blue-700',
+  OVERSEAS_STOCK: 'bg-emerald-100 text-emerald-700',
+  REAL_ESTATE: 'bg-amber-100 text-amber-700',
+  DEPOSIT: 'bg-violet-100 text-violet-700',
+  GOLD: 'bg-orange-100 text-orange-700',
+  OTHER: 'bg-gray-100 text-gray-700',
+};
+
+export function getReturnBgColor(value: number): string {
+  if (value > 0) return 'bg-red-50 text-red-600';
+  if (value < 0) return 'bg-blue-50 text-blue-600';
+  return 'bg-gray-50 text-gray-500';
+}
+
+export function formatDate(dateString: string): string {
+  const d = new Date(dateString);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}.${m}.${day}`;
+}
 
 export const ASSET_TYPE_COLORS: Record<string, string> = {
   KOREAN_STOCK: '#3b82f6',
