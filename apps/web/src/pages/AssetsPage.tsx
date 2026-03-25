@@ -964,22 +964,33 @@ export default function AssetsPage() {
                   </div>
                   {isDeposit ? (
                     <div>
-                      <Label>{activeLabel} 금액</Label>
+                      <Label>
+                        {selectedAsset?.type === 'DEPOSIT' && tradeForm.type === 'SELL'
+                          ? '수령액 (원금+이자)'
+                          : `${activeLabel} 금액`}
+                      </Label>
                       <Input
                         type="text"
                         inputMode="decimal"
                         value={tradeForm.price}
                         onChange={(e) => setTradeForm({ ...tradeForm, price: toCommaString(e.target.value) })}
                         placeholder="0"
-                        className={`mt-1 ${tradeForm.type === 'SELL' && Number(fromCommaString(tradeForm.price)) > (selectedAsset?.holding?.quantity ?? 0) * (selectedAsset?.holding?.avgCostPrice ?? 0) ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                        className={`mt-1 ${tradeForm.type === 'SELL' && selectedAsset?.type !== 'DEPOSIT' && Number(fromCommaString(tradeForm.price)) > (selectedAsset?.holding?.quantity ?? 0) * (selectedAsset?.holding?.avgCostPrice ?? 0) ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       />
                       {tradeForm.type === 'SELL' && (() => {
-                        const max = (selectedAsset?.holding?.quantity ?? 0) * (selectedAsset?.holding?.avgCostPrice ?? 0);
+                        const principal = (selectedAsset?.holding?.quantity ?? 0) * (selectedAsset?.holding?.avgCostPrice ?? 0);
+                        if (selectedAsset?.type === 'DEPOSIT') {
+                          return (
+                            <div className="text-xs mt-1 text-gray-400">
+                              <span>납입 원금: {formatCurrency(principal, selectedAsset?.currency)}</span>
+                            </div>
+                          );
+                        }
                         const current = Number(fromCommaString(tradeForm.price));
-                        const isOver = current > max;
+                        const isOver = current > principal;
                         return (
                           <div className={`text-xs mt-1 flex justify-between ${isOver ? 'text-red-500' : 'text-gray-400'}`}>
-                            <span>현재 금액: {formatCurrency(max, selectedAsset?.currency)}</span>
+                            <span>현재 금액: {formatCurrency(principal, selectedAsset?.currency)}</span>
                             {isOver && <span className="font-medium">보유 금액을 초과했습니다</span>}
                           </div>
                         );
@@ -1066,6 +1077,29 @@ export default function AssetsPage() {
                     <div className="bg-gray-50 rounded-md p-3 text-sm space-y-1">
                       {isDeposit ? (() => {
                         const currentTotal = (selectedAsset?.holding?.quantity ?? 0) * (selectedAsset?.holding?.avgCostPrice ?? 0);
+                        // 예적금 해지: 수령액 기반 이자 수익 표시
+                        if (selectedAsset?.type === 'DEPOSIT' && tradeForm.type === 'SELL') {
+                          const interest = priceNum - currentTotal;
+                          return (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">납입 원금</span>
+                                <span>{formatCurrency(currentTotal, selectedAsset?.currency)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">수령액</span>
+                                <span className="font-semibold">{formatCurrency(priceNum, selectedAsset?.currency)}</span>
+                              </div>
+                              <div className="border-t pt-1 mt-1" />
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">이자 수익</span>
+                                <span className={`font-semibold ${interest >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                  {interest >= 0 ? '+' : ''}{formatCurrency(interest, selectedAsset?.currency)}
+                                </span>
+                              </div>
+                            </>
+                          );
+                        }
                         const afterTotal = tradeForm.type === 'BUY' ? currentTotal + priceNum : currentTotal - priceNum;
                         return (
                           <>
@@ -1119,7 +1153,7 @@ export default function AssetsPage() {
                     disabled={
                       (isDeposit ? !priceNum : (!qtyNum || !priceNum)) ||
                       (tradeForm.type === 'SELL' && !isDeposit && qtyNum > (selectedAsset?.holding?.quantity ?? 0)) ||
-                      (tradeForm.type === 'SELL' && isDeposit && priceNum > (selectedAsset?.holding?.quantity ?? 0) * (selectedAsset?.holding?.avgCostPrice ?? 0)) ||
+                      (tradeForm.type === 'SELL' && isDeposit && selectedAsset?.type !== 'DEPOSIT' && priceNum > (selectedAsset?.holding?.quantity ?? 0) * (selectedAsset?.holding?.avgCostPrice ?? 0)) ||
                       createTransactionMutation.isPending
                     }
                     className={tradeForm.type === 'BUY' ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}

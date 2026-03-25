@@ -5,6 +5,7 @@ import { portfolioApi, transactionsApi, priceApi, newsApi } from '@/lib/api';
 import {
   formatCurrency, formatPercent, getReturnColor, getReturnBgColor, formatDate,
   ASSET_TYPE_LABELS, ASSET_TYPE_COLORS, ASSET_TYPE_BG_COLORS, ASSET_TYPE_FIELD_CONFIG,
+  DEPOSIT_SUB_TYPE_MAP, REAL_ESTATE_SUB_TYPE_MAP,
 } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -318,33 +319,41 @@ export default function DashboardPage() {
               <TableBody>
                 {sortedHoldings.map((h) => {
                   const fieldConfig = ASSET_TYPE_FIELD_CONFIG[h.asset.type];
+                  const isDeposit = h.asset.type === 'DEPOSIT';
+                  const isRealEstate = h.asset.type === 'REAL_ESTATE';
+                  const depSub = isDeposit ? DEPOSIT_SUB_TYPE_MAP[h.asset.subType ?? ''] : null;
+                  const reSub = isRealEstate ? REAL_ESTATE_SUB_TYPE_MAP[h.asset.subType ?? ''] : null;
+                  const subLabel = depSub?.label ?? reSub?.label ?? null;
+                  const isAmountBased = isDeposit || isRealEstate;
                   return (
                     <TableRow key={h.id} className="hover:bg-gray-50">
                       <TableCell className="font-medium">{h.asset.name}</TableCell>
                       <TableCell>
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${ASSET_TYPE_BG_COLORS[h.asset.type] ?? 'bg-gray-100 text-gray-700'}`}>
-                          {ASSET_TYPE_LABELS[h.asset.type] ?? h.asset.type}
+                          {subLabel ?? ASSET_TYPE_LABELS[h.asset.type] ?? h.asset.type}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        {fieldConfig?.hideQuantity ? '-' : h.quantity.toLocaleString('ko-KR')}
+                        {isAmountBased ? '-' : h.quantity.toLocaleString('ko-KR')}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fieldConfig?.hideQuantity ? formatCurrency(h.totalCost, h.asset.currency) : formatCurrency(h.avgCostPrice, h.asset.currency)}
+                        {isAmountBased ? formatCurrency(h.totalCost, h.asset.currency) : formatCurrency(h.avgCostPrice, h.asset.currency)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fieldConfig?.hideQuantity ? formatCurrency(h.currentValue, h.asset.currency) : formatCurrency(h.currentPrice, h.asset.currency)}
+                        {isDeposit ? '-' : isRealEstate ? formatCurrency(h.currentValue, h.asset.currency) : formatCurrency(h.currentPrice, h.asset.currency)}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {fieldConfig?.hideQuantity ? '-' : formatCurrency(h.currentValue, h.asset.currency)}
+                        {isAmountBased ? '-' : formatCurrency(h.currentValue, h.asset.currency)}
                       </TableCell>
-                      <TableCell className={`text-right font-medium ${getReturnColor(h.returnAmount)}`}>
-                        {h.returnAmount >= 0 ? '+' : ''}{formatCurrency(h.returnAmount, h.asset.currency)}
+                      <TableCell className={`text-right font-medium ${isDeposit ? 'text-gray-400' : getReturnColor(h.returnAmount)}`}>
+                        {isDeposit ? '-' : <>{h.returnAmount >= 0 ? '+' : ''}{formatCurrency(h.returnAmount, h.asset.currency)}</>}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${getReturnBgColor(h.returnRate)}`}>
-                          {formatPercent(h.returnRate)}
-                        </span>
+                        {isDeposit ? <span className="text-gray-400">-</span> : (
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${getReturnBgColor(h.returnRate)}`}>
+                            {formatPercent(h.returnRate)}
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -381,13 +390,16 @@ export default function DashboardPage() {
               <TableBody>
                 {recentTransactions.map((tx) => {
                   const txConfig = ASSET_TYPE_FIELD_CONFIG[tx.asset?.type ?? ''];
+                  const txDepSub = tx.asset?.type === 'DEPOSIT' ? DEPOSIT_SUB_TYPE_MAP[tx.asset?.subType ?? ''] : null;
+                  const txReSub = tx.asset?.type === 'REAL_ESTATE' ? REAL_ESTATE_SUB_TYPE_MAP[tx.asset?.subType ?? ''] : null;
+                  const txLabel = txDepSub?.transactionLabels?.[tx.type] ?? txReSub?.transactionLabels?.[tx.type] ?? txConfig?.transactionLabels[tx.type] ?? (tx.type === 'BUY' ? '매수' : '매도');
                   return (
                     <TableRow key={tx.id} className="hover:bg-gray-50">
                       <TableCell className="text-gray-600">{formatDate(tx.date)}</TableCell>
                       <TableCell className="font-medium">{tx.asset?.name ?? '-'}</TableCell>
                       <TableCell>
                         <Badge className={tx.type === 'BUY' ? 'bg-red-100 text-red-700 hover:bg-red-100' : 'bg-blue-100 text-blue-700 hover:bg-blue-100'}>
-                          {txConfig?.transactionLabels[tx.type] ?? (tx.type === 'BUY' ? '매수' : '매도')}
+                          {txLabel}
                         </Badge>
                       </TableCell>
                       <TableCell className={`text-right font-medium ${tx.type === 'BUY' ? 'text-red-500' : 'text-blue-500'}`}>

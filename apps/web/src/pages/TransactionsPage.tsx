@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsApi, assetsApi, type Transaction } from '@/lib/api';
-import { formatCurrency, formatDate, ASSET_TYPE_LABELS, ASSET_TYPE_FIELD_CONFIG } from '@/lib/utils';
+import { formatCurrency, formatDate, ASSET_TYPE_LABELS, ASSET_TYPE_FIELD_CONFIG, DEPOSIT_SUB_TYPE_MAP, REAL_ESTATE_SUB_TYPE_MAP } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -170,6 +170,10 @@ export default function TransactionsPage() {
             ) : (
               transactions.map((tx) => {
                 const txConfig = ASSET_TYPE_FIELD_CONFIG[tx.asset?.type ?? ''];
+                const txDepSub = tx.asset?.type === 'DEPOSIT' ? DEPOSIT_SUB_TYPE_MAP[tx.asset?.subType ?? ''] : null;
+                const txReSub = tx.asset?.type === 'REAL_ESTATE' ? REAL_ESTATE_SUB_TYPE_MAP[tx.asset?.subType ?? ''] : null;
+                const txLabel = txDepSub?.transactionLabels?.[tx.type] ?? txReSub?.transactionLabels?.[tx.type] ?? txConfig?.transactionLabels[tx.type] ?? (tx.type === 'BUY' ? '매수' : '매도');
+                const isAmountBased = txConfig?.hideQuantity || txDepSub?.hideQuantity || txReSub?.hideQuantity;
                 return (
                 <TableRow key={tx.id} className="hover:bg-gray-50">
                   <TableCell className="whitespace-nowrap text-gray-600">
@@ -187,20 +191,20 @@ export default function TransactionsPage() {
                     <Badge
                       className={tx.type === 'BUY' ? 'bg-red-100 text-red-700 hover:bg-red-100' : 'bg-blue-100 text-blue-700 hover:bg-blue-100'}
                     >
-                      {txConfig?.transactionLabels[tx.type] ?? (tx.type === 'BUY' ? '매수' : '매도')}
+                      {txLabel}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {txConfig?.hideQuantity ? '-' : tx.quantity.toLocaleString('ko-KR')}
+                    {isAmountBased ? '-' : tx.quantity.toLocaleString('ko-KR')}
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(tx.price, tx.asset?.currency)}
+                    {isAmountBased ? '-' : formatCurrency(tx.price, tx.asset?.currency)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(tx.fee, tx.asset?.currency)}
+                    {isAmountBased ? '-' : formatCurrency(tx.fee, tx.asset?.currency)}
                   </TableCell>
                   <TableCell className={`text-right font-medium ${tx.type === 'BUY' ? 'text-red-500' : 'text-blue-500'}`}>
-                    {tx.type === 'SELL' ? '+' : '-'}{formatCurrency(tx.quantity * tx.price, tx.asset?.currency)}
+                    {tx.type === 'SELL' ? '+' : '-'}{formatCurrency(isAmountBased ? tx.price : tx.quantity * tx.price, tx.asset?.currency)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-500">{tx.memo ?? '-'}</TableCell>
                   <TableCell>

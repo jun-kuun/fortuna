@@ -44,7 +44,12 @@ export class TransactionsService {
 
     const isAmountBased = asset.type === 'DEPOSIT' || asset.type === 'REAL_ESTATE';
     if (isAmountBased) {
-      await this.applyAmountTransaction(dto.assetId, dto.type, dto.price);
+      if (asset.type === 'DEPOSIT' && dto.type === 'SELL') {
+        // 예적금 해지 = 전액 출금, 원금 리셋
+        await this.resetHolding(dto.assetId);
+      } else {
+        await this.applyAmountTransaction(dto.assetId, dto.type, dto.price);
+      }
     } else {
       await this.recalculateHolding(dto.assetId);
     }
@@ -59,13 +64,47 @@ export class TransactionsService {
 
     const isAmountBased = asset?.type === 'DEPOSIT' || asset?.type === 'REAL_ESTATE';
     if (isAmountBased) {
-      // 삭제 시 반대로 적용
-      const reverseType = tx.type === 'BUY' ? 'SELL' : 'BUY';
-      await this.applyAmountTransaction(tx.assetId, reverseType, tx.price);
+      if (asset?.type === 'DEPOSIT' && tx.type === 'SELL') {
+        // 해지 거래 삭제 → 남은 납입 거래로 원금 복원
+        await this.recalculateDepositHolding(tx.assetId);
+      } else {
+        const reverseType = tx.type === 'BUY' ? 'SELL' : 'BUY';
+        await this.applyAmountTransaction(tx.assetId, reverseType, tx.price);
+      }
     } else {
       await this.recalculateHolding(tx.assetId);
     }
     return tx;
+  }
+
+  /** 예적금 해지: 원금 전액 리셋 */
+  private async resetHolding(assetId: string) {
+    await this.prisma.holding.upsert({
+      where: { assetId },
+      create: { assetId, quantity: 1, avgCostPrice: 0, currentPrice: 0 },
+      update: { avgCostPrice: 0, currentPrice: 0 },
+    });
+  }
+
+  /** 예적금 해지 취소: 남은 납입 거래 합산으로 원금 복원 */
+  private async recalculateDepositHolding(assetId: string) {
+    const transactions = await this.prisma.transaction.findMany({
+      where: { assetId },
+      orderBy: { date: 'asc' },
+    });
+
+    let total = 0;
+    for (const tx of transactions) {
+      if (tx.type === 'BUY') total += tx.price;
+      // 다른 SELL(해지)이 남아있으면 리셋
+      if (tx.type === 'SELL') { total = 0; }
+    }
+
+    await this.prisma.holding.upsert({
+      where: { assetId },
+      create: { assetId, quantity: 1, avgCostPrice: total, currentPrice: total },
+      update: { avgCostPrice: total, currentPrice: total },
+    });
   }
 
   /** 예적금/부동산: 기존 금액에 직접 증감 */
