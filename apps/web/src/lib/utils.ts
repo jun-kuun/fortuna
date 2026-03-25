@@ -67,10 +67,31 @@ export const ASSET_TYPE_FIELD_CONFIG: Record<string, {
   KOREAN_STOCK:   { quantityLabel: '보유 수량',  avgCostPriceLabel: '평균 매수 단가', currentPriceLabel: '현재가',       hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
   OVERSEAS_STOCK: { quantityLabel: '보유 수량',  avgCostPriceLabel: '평균 매수 단가', currentPriceLabel: '현재가',       hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
   REAL_ESTATE:    { quantityLabel: '보유 수',    avgCostPriceLabel: '매입가',         currentPriceLabel: '현재 시세',    hideQuantity: false, transactionLabels: { BUY: '매입', SELL: '매각' } },
-  DEPOSIT:        { quantityLabel: '',           avgCostPriceLabel: '원금',           currentPriceLabel: '현재 평가액',  hideQuantity: true,  transactionLabels: { BUY: '가입', SELL: '해지' } },
+  DEPOSIT:        { quantityLabel: '',           avgCostPriceLabel: '원금',           currentPriceLabel: '현재 평가액',  hideQuantity: true,  transactionLabels: { BUY: '납입', SELL: '해지' } },
   GOLD:           { quantityLabel: '보유량(g)',  avgCostPriceLabel: '매입 단가',      currentPriceLabel: '현재 시세',    hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
   OTHER:          { quantityLabel: '수량',       avgCostPriceLabel: '매입 단가',      currentPriceLabel: '현재가',       hideQuantity: false, transactionLabels: { BUY: '매수', SELL: '매도' } },
 };
+
+// 부동산 서브타입 설정
+export const REAL_ESTATE_SUB_TYPES = [
+  { value: 'JEONSE',       label: '전세',       transactionLabels: { BUY: '납부', SELL: '반환' }, hideQuantity: true },
+  { value: 'PURCHASE',     label: '매매',       transactionLabels: { BUY: '매입', SELL: '매각' }, hideQuantity: true },
+  { value: 'MONTHLY_RENT', label: '월세 보증금', transactionLabels: { BUY: '납부', SELL: '반환' }, hideQuantity: true },
+] as const;
+
+export const REAL_ESTATE_SUB_TYPE_MAP: Record<string, typeof REAL_ESTATE_SUB_TYPES[number]> = Object.fromEntries(
+  REAL_ESTATE_SUB_TYPES.map((s) => [s.value, s]),
+);
+
+// 예적금 서브타입 설정
+export const DEPOSIT_SUB_TYPES = [
+  { value: 'SAVINGS',  label: '적금', transactionLabels: { BUY: '납입', SELL: '해지' }, hideQuantity: true },
+  { value: 'FIXED',    label: '예금', transactionLabels: { BUY: '가입', SELL: '해지' }, hideQuantity: true },
+] as const;
+
+export const DEPOSIT_SUB_TYPE_MAP: Record<string, typeof DEPOSIT_SUB_TYPES[number]> = Object.fromEntries(
+  DEPOSIT_SUB_TYPES.map((s) => [s.value, s]),
+);
 
 export const ASSET_TYPE_BG_COLORS: Record<string, string> = {
   KOREAN_STOCK: 'bg-blue-100 text-blue-700',

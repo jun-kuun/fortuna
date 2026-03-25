@@ -11,8 +11,11 @@ export interface Asset {
   id: string;
   name: string;
   type: string;
+  subType?: string | null;
   currency: string;
   ticker?: string | null;
+  interestRate?: number | null;
+  maturityDate?: string | null;
   createdAt: string;
   holding?: Holding;
 }
@@ -66,9 +69,9 @@ export interface AssetAllocation {
 export const assetsApi = {
   getAll: () => api.get<Asset[]>('/assets').then((r) => r.data),
   getOne: (id: string) => api.get<Asset>(`/assets/${id}`).then((r) => r.data),
-  create: (data: { name: string; type: string; currency: string; ticker?: string }) =>
+  create: (data: { name: string; type: string; currency: string; ticker?: string; subType?: string; interestRate?: number; maturityDate?: string }) =>
     api.post<Asset>('/assets', data).then((r) => r.data),
-  update: (id: string, data: Partial<{ name: string; type: string; currency: string; ticker?: string }>) =>
+  update: (id: string, data: Partial<{ name: string; type: string; currency: string; ticker?: string; subType?: string; interestRate?: number; maturityDate?: string }>) =>
     api.patch<Asset>(`/assets/${id}`, data).then((r) => r.data),
   updateHolding: (id: string, data: { quantity?: number; avgCostPrice?: number; currentPrice?: number }) =>
     api.patch<Holding>(`/assets/${id}/holding`, data).then((r) => r.data),

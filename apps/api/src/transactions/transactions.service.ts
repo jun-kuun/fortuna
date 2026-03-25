@@ -42,19 +42,46 @@ export class TransactionsService {
       include: { asset: true },
     });
 
-    // Recalculate holding avg cost after transaction
-    await this.recalculateHolding(dto.assetId);
+    const isAmountBased = asset.type === 'DEPOSIT' || asset.type === 'REAL_ESTATE';
+    if (isAmountBased) {
+      await this.applyAmountTransaction(dto.assetId, dto.type, dto.price);
+    } else {
+      await this.recalculateHolding(dto.assetId);
+    }
 
     return transaction;
   }
 
   async remove(id: string) {
     const tx = await this.findOne(id);
+    const asset = await this.prisma.asset.findUnique({ where: { id: tx.assetId } });
     await this.prisma.transaction.delete({ where: { id } });
-    await this.recalculateHolding(tx.assetId);
+
+    const isAmountBased = asset?.type === 'DEPOSIT' || asset?.type === 'REAL_ESTATE';
+    if (isAmountBased) {
+      // 삭제 시 반대로 적용
+      const reverseType = tx.type === 'BUY' ? 'SELL' : 'BUY';
+      await this.applyAmountTransaction(tx.assetId, reverseType, tx.price);
+    } else {
+      await this.recalculateHolding(tx.assetId);
+    }
     return tx;
   }
 
+  /** 예적금/부동산: 기존 금액에 직접 증감 */
+  private async applyAmountTransaction(assetId: string, type: string, amount: number) {
+    const holding = await this.prisma.holding.findUnique({ where: { assetId } });
+    const currentAmount = holding?.avgCostPrice ?? 0;
+    const newAmount = Math.max(0, type === 'BUY' ? currentAmount + amount : currentAmount - amount);
+
+    await this.prisma.holding.upsert({
+      where: { assetId },
+      create: { assetId, quantity: 1, avgCostPrice: newAmount, currentPrice: newAmount },
+      update: { avgCostPrice: newAmount, currentPrice: newAmount },
+    });
+  }
+
+  /** 주식/금: 거래 전체 재계산으로 수량 + 평균 단가 산출 */
   private async recalculateHolding(assetId: string) {
     const transactions = await this.prisma.transaction.findMany({
       where: { assetId },
@@ -69,7 +96,6 @@ export class TransactionsService {
         totalCost += tx.quantity * tx.price + tx.fee;
         quantity += tx.quantity;
       } else {
-        // SELL: reduce quantity proportionally
         const sellRatio = tx.quantity / (quantity || 1);
         totalCost -= totalCost * sellRatio;
         quantity -= tx.quantity;

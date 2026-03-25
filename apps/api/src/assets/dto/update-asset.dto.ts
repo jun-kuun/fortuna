@@ -16,7 +16,17 @@ export class UpdateAssetDto {
 
   @IsString()
   @IsOptional()
+  subType?: string;
+
+  @IsString()
+  @IsOptional()
   ticker?: string;
+
+  @IsOptional()
+  interestRate?: number;
+
+  @IsOptional()
+  maturityDate?: string;
 }
 
 export class UpdateHoldingDto {

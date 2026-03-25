@@ -27,14 +27,17 @@ enum Currency {
 }
 
 model Asset {
-  id           String        @id @default(cuid())
-  name         String
-  type         AssetType
-  currency     Currency      @default(KRW)
-  ticker       String?
-  createdAt    DateTime      @default(now())
-  holding      Holding?
-  transactions Transaction[]
+  id            String        @id @default(cuid())
+  name          String
+  type          AssetType
+  subType       String?
+  currency      Currency      @default(KRW)
+  ticker        String?
+  interestRate  Float?        // 연이율 (%), 예적금용
+  maturityDate  DateTime?     // 만기일, 예적금용
+  createdAt     DateTime      @default(now())
+  holding       Holding?
+  transactions  Transaction[]
 }
 
 model Holding {

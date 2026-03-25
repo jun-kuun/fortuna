@@ -28,8 +28,11 @@ export class AssetsService {
       data: {
         name: dto.name,
         type: dto.type,
+        subType: dto.subType || null,
         currency: dto.currency,
         ticker: dto.ticker || null,
+        interestRate: dto.interestRate ?? null,
+        maturityDate: dto.maturityDate ? new Date(dto.maturityDate) : null,
         holding: {
           create: {
             quantity: 0,
@@ -44,9 +47,11 @@ export class AssetsService {
 
   async update(id: string, dto: UpdateAssetDto) {
     await this.findOne(id);
+    const data: any = { ...dto };
+    if (dto.maturityDate) data.maturityDate = new Date(dto.maturityDate);
     return this.prisma.asset.update({
       where: { id },
-      data: dto,
+      data,
       include: { holding: true },
     });
   }

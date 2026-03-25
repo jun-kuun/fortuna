@@ -14,5 +14,15 @@ export class CreateAssetDto {
 
   @IsString()
   @IsOptional()
+  subType?: string;
+
+  @IsString()
+  @IsOptional()
   ticker?: string;
+
+  @IsOptional()
+  interestRate?: number;
+
+  @IsOptional()
+  maturityDate?: string;
 }
