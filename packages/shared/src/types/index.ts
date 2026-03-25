@@ -159,3 +159,124 @@ export interface GoalProjection {
   shortfall: number;
   monthlyProjections: Array<{ date: string; value: number }>;
 }
+
+// ── Insights Types ──
+
+export interface HealthCheckResult {
+  overallScore: number;
+  overallGrade: 'A' | 'B' | 'C' | 'D' | 'F';
+  dataQuality: 'sufficient' | 'insufficient';
+  diversification: {
+    score: number;
+    grade: string;
+    assetTypeCount: number;
+    assetCount: number;
+    hhi: number;
+  };
+  riskAssessment: {
+    score: number;
+    level: string;
+    weightedRisk: number;
+  };
+  rebalancingUrgency: {
+    level: string;
+    totalDeviation: number;
+    hasProfile: boolean;
+    profileName?: string;
+  };
+  cashDrag: {
+    level: string;
+    score: number;
+    depositPercent: number;
+    opportunityCost: number;
+    opportunityCost5yr: number;
+    opportunityCost10yr: number;
+  };
+  recommendations: Recommendation[];
+  generatedAt: string;
+}
+
+export interface Recommendation {
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  category: string;
+  title: string;
+  description: string;
+  impact: string;
+}
+
+export interface MonthlyReport {
+  month: string;
+  dataQuality: 'sufficient' | 'insufficient';
+  netWorth: number;
+  previousNetWorth: number;
+  change: number;
+  changePercent: number;
+  bestPerformers: Array<{ type: string; name: string; returnRate: number; returnAmount: number }>;
+  worstPerformers: Array<{ type: string; name: string; returnRate: number; returnAmount: number }>;
+  netInflow: number;
+  milestones: string[];
+  growthStreak: number;
+  monthlyHistory: Array<{ month: string; netWorth: number; change: number }>;
+}
+
+export interface TimingAnalysis {
+  dataQuality: 'sufficient' | 'insufficient';
+  holdingPeriods: Array<{
+    assetId: string;
+    name: string;
+    type: string;
+    avgDays: number;
+    status: 'short' | 'medium' | 'long';
+  }>;
+  buyHighSellLow: Array<{
+    assetId: string;
+    name: string;
+    type: string;
+    buyScore: number;
+    sellScore: number;
+    verdict: 'good' | 'caution' | 'bad';
+  }>;
+  dcaAnalysis: {
+    overallScore: number;
+    perAsset: Array<{
+      assetId: string;
+      name: string;
+      regularity: number;
+      avgIntervalDays: number;
+      buyCount: number;
+    }>;
+  };
+  emotionalTrading: {
+    flags: Array<{
+      period: string;
+      type: 'panic_sell' | 'fomo_buy';
+      transactionCount: number;
+      description: string;
+    }>;
+  };
+}
+
+export interface FinancialHabits {
+  dataQuality: 'sufficient' | 'insufficient';
+  consistencyScore: number;
+  monthsInvested: number;
+  monthlyActivity: Array<{
+    month: string;
+    buyCount: number;
+    sellCount: number;
+    netInflow: number;
+  }>;
+  diversificationTrend: {
+    current: number;
+    sixMonthsAgo: number;
+    improving: boolean;
+  };
+  turnoverRate: {
+    rate: number;
+    level: 'patient' | 'moderate' | 'active' | 'unknown';
+  };
+  wealthVelocity: {
+    annualRate: number;
+    absoluteGrowth: number;
+  };
+}

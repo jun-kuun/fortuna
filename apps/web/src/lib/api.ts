@@ -12,6 +12,7 @@ export interface Asset {
   name: string;
   type: string;
   currency: string;
+  ticker?: string | null;
   createdAt: string;
   holding?: Holding;
 }
@@ -22,6 +23,7 @@ export interface Holding {
   quantity: number;
   avgCostPrice: number;
   currentPrice: number;
+  priceUpdatedAt?: string | null;
   updatedAt: string;
 }
 
@@ -64,9 +66,9 @@ export interface AssetAllocation {
 export const assetsApi = {
   getAll: () => api.get<Asset[]>('/assets').then((r) => r.data),
   getOne: (id: string) => api.get<Asset>(`/assets/${id}`).then((r) => r.data),
-  create: (data: { name: string; type: string; currency: string }) =>
+  create: (data: { name: string; type: string; currency: string; ticker?: string }) =>
     api.post<Asset>('/assets', data).then((r) => r.data),
-  update: (id: string, data: Partial<{ name: string; type: string; currency: string }>) =>
+  update: (id: string, data: Partial<{ name: string; type: string; currency: string; ticker?: string }>) =>
     api.patch<Asset>(`/assets/${id}`, data).then((r) => r.data),
   updateHolding: (id: string, data: { quantity?: number; avgCostPrice?: number; currentPrice?: number }) =>
     api.patch<Holding>(`/assets/${id}/holding`, data).then((r) => r.data),
@@ -174,6 +176,139 @@ export const strategyApi = {
     api.delete(`/strategy/goals/${id}`).then((r) => r.data),
   getGoalProjection: (id: string) =>
     api.get<GoalProjection>(`/strategy/goals/${id}/projection`).then((r) => r.data),
+};
+
+// Insights
+export interface HealthCheckResult {
+  overallScore: number;
+  overallGrade: 'A' | 'B' | 'C' | 'D' | 'F';
+  dataQuality: 'sufficient' | 'insufficient';
+  diversification: {
+    score: number;
+    grade: string;
+    assetTypeCount: number;
+    assetCount: number;
+    hhi: number;
+  };
+  riskAssessment: {
+    score: number;
+    level: string;
+    weightedRisk: number;
+  };
+  rebalancingUrgency: {
+    level: string;
+    totalDeviation: number;
+    hasProfile: boolean;
+    profileName?: string;
+  };
+  cashDrag: {
+    level: string;
+    score: number;
+    depositPercent: number;
+    opportunityCost: number;
+    opportunityCost5yr: number;
+    opportunityCost10yr: number;
+  };
+  recommendations: Array<{
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    category: string;
+    title: string;
+    description: string;
+    impact: string;
+  }>;
+  generatedAt: string;
+}
+
+export interface MonthlyReport {
+  month: string;
+  dataQuality: 'sufficient' | 'insufficient';
+  netWorth: number;
+  previousNetWorth: number;
+  change: number;
+  changePercent: number;
+  bestPerformers: Array<{ type: string; name: string; returnRate: number; returnAmount: number }>;
+  worstPerformers: Array<{ type: string; name: string; returnRate: number; returnAmount: number }>;
+  netInflow: number;
+  milestones: string[];
+  growthStreak: number;
+  monthlyHistory: Array<{ month: string; netWorth: number; change: number }>;
+}
+
+export interface TimingAnalysis {
+  dataQuality: 'sufficient' | 'insufficient';
+  holdingPeriods: Array<{ assetId: string; name: string; type: string; avgDays: number; status: 'short' | 'medium' | 'long' }>;
+  buyHighSellLow: Array<{ assetId: string; name: string; type: string; buyScore: number; sellScore: number; verdict: 'good' | 'caution' | 'bad' }>;
+  dcaAnalysis: { overallScore: number; perAsset: Array<{ assetId: string; name: string; regularity: number; avgIntervalDays: number; buyCount: number }> };
+  emotionalTrading: { flags: Array<{ period: string; type: 'panic_sell' | 'fomo_buy'; transactionCount: number; description: string }> };
+}
+
+export interface FinancialHabits {
+  dataQuality: 'sufficient' | 'insufficient';
+  consistencyScore: number;
+  monthsInvested: number;
+  monthlyActivity: Array<{ month: string; buyCount: number; sellCount: number; netInflow: number }>;
+  diversificationTrend: { current: number; sixMonthsAgo: number; improving: boolean };
+  turnoverRate: { rate: number; level: 'patient' | 'moderate' | 'active' | 'unknown' };
+  wealthVelocity: { annualRate: number; absoluteGrowth: number };
+}
+
+// Prices
+export interface PriceUpdateResult {
+  updatedCount: number;
+  failedCount: number;
+  skippedCount: number;
+  exchangeRate: { USDKRW: number | null };
+  results: Array<{
+    assetId: string;
+    assetName: string;
+    ticker: string;
+    oldPrice: number;
+    newPrice: number;
+    status: 'updated' | 'failed' | 'skipped';
+    error?: string;
+  }>;
+  updatedAt: string;
+}
+
+export const priceApi = {
+  updateAll: () => api.post<PriceUpdateResult>('/prices/update-all').then((r) => r.data),
+  updateOne: (assetId: string) => api.post(`/prices/update/${assetId}`).then((r) => r.data),
+  getExchangeRate: () =>
+    api.get<{ USDKRW: number | null; fetchedAt: string }>('/prices/exchange-rate').then((r) => r.data),
+};
+
+// News
+export interface NewsItem {
+  title: string;
+  description: string;
+  link: string;
+  source: string;
+  pubDate: string;
+  category: 'market' | 'asset';
+  relatedAsset?: string;
+}
+
+export interface AllNewsResponse {
+  market: NewsItem[];
+  assets: NewsItem[];
+}
+
+export const newsApi = {
+  getAll: () => api.get<AllNewsResponse>('/news').then((r) => r.data),
+  getMarket: () => api.get<NewsItem[]>('/news/market').then((r) => r.data),
+  getAssetNews: (assetId?: string) =>
+    api.get<NewsItem[]>('/news/assets', { params: assetId ? { assetId } : {} }).then((r) => r.data),
+};
+
+export const insightsApi = {
+  getHealthCheck: () =>
+    api.get<HealthCheckResult>('/insights/health-check').then((r) => r.data),
+  getMonthlyReport: (month?: string) =>
+    api.get<MonthlyReport>('/insights/monthly-report', { params: month ? { month } : {} }).then((r) => r.data),
+  getTimingAnalysis: () =>
+    api.get<TimingAnalysis>('/insights/timing-analysis').then((r) => r.data),
+  getHabits: () =>
+    api.get<FinancialHabits>('/insights/habits').then((r) => r.data),
 };
 
 export default api;

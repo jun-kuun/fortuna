@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Wallet, ArrowLeftRight, Coins, Target } from 'lucide-react';
+import { LayoutDashboard, Wallet, ArrowLeftRight, Coins, Target, HeartPulse, Newspaper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -7,6 +7,8 @@ const navItems = [
   { to: '/assets', label: '자산 관리', icon: Wallet },
   { to: '/transactions', label: '거래 내역', icon: ArrowLeftRight },
   { to: '/strategy', label: '투자 전략', icon: Target },
+  { to: '/insights', label: '자산 진단', icon: HeartPulse },
+  { to: '/news', icon: Newspaper, label: '뉴스' },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

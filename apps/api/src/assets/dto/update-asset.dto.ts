@@ -13,6 +13,10 @@ export class UpdateAssetDto {
   @IsEnum(Currency)
   @IsOptional()
   currency?: Currency;
+
+  @IsString()
+  @IsOptional()
+  ticker?: string;
 }
 
 export class UpdateHoldingDto {

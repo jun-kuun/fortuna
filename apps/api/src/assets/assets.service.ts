@@ -29,6 +29,7 @@ export class AssetsService {
         name: dto.name,
         type: dto.type,
         currency: dto.currency,
+        ticker: dto.ticker || null,
         holding: {
           create: {
             quantity: 0,

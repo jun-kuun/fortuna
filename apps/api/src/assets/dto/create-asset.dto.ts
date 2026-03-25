@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AssetType, Currency } from '@prisma/client';
 
 export class CreateAssetDto {
@@ -11,4 +11,8 @@ export class CreateAssetDto {
 
   @IsEnum(Currency)
   currency: Currency;
+
+  @IsString()
+  @IsOptional()
+  ticker?: string;
 }

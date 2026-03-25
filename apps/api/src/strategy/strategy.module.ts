@@ -7,5 +7,6 @@ import { StrategyService } from './strategy.service';
   imports: [PortfolioModule],
   controllers: [StrategyController],
   providers: [StrategyService],
+  exports: [StrategyService],
 })
 export class StrategyModule {}

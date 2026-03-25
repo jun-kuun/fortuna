@@ -1,14 +1,15 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { portfolioApi, transactionsApi } from '@/lib/api';
+import { portfolioApi, transactionsApi, priceApi, newsApi } from '@/lib/api';
 import {
   formatCurrency, formatPercent, getReturnColor, getReturnBgColor, formatDate,
   ASSET_TYPE_LABELS, ASSET_TYPE_COLORS, ASSET_TYPE_BG_COLORS, ASSET_TYPE_FIELD_CONFIG,
 } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, PiggyBank, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, DollarSign, PiggyBank, ArrowRight, Download, Newspaper, ArrowUpDown } from 'lucide-react';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -18,6 +19,19 @@ import {
 } from '@/components/ui/table';
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
+  const [priceMsg, setPriceMsg] = useState<string | null>(null);
+
+  const updatePricesMutation = useMutation({
+    mutationFn: priceApi.updateAll,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      setPriceMsg(`${data.updatedCount}개 시세 업데이트 완료`);
+      setTimeout(() => setPriceMsg(null), 4000);
+    },
+  });
+
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ['portfolio', 'summary'],
     queryFn: portfolioApi.getSummary,
@@ -31,6 +45,18 @@ export default function DashboardPage() {
   const { data: transactions = [] } = useQuery({
     queryKey: ['transactions'],
     queryFn: () => transactionsApi.getAll(),
+  });
+
+  const { data: newsData } = useQuery({
+    queryKey: ['news', 'all'],
+    queryFn: newsApi.getAll,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: exchangeRate } = useQuery({
+    queryKey: ['exchangeRate'],
+    queryFn: priceApi.getExchangeRate,
+    staleTime: 30 * 60 * 1000,
   });
 
   const pieData = (allocation ?? []).map((a) => ({
@@ -79,13 +105,26 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">포트폴리오 대시보드</h2>
-        <p className="text-gray-500 mt-1">전체 자산 현황을 한눈에 확인하세요</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">포트폴리오 대시보드</h2>
+          <p className="text-gray-500 mt-1">전체 자산 현황을 한눈에 확인하세요</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {priceMsg && <span className="text-sm text-green-600 font-medium">{priceMsg}</span>}
+          <Button
+            variant="outline"
+            onClick={() => updatePricesMutation.mutate()}
+            disabled={updatePricesMutation.isPending}
+          >
+            <Download className={`h-4 w-4 mr-2 ${updatePricesMutation.isPending ? 'animate-pulse' : ''}`} />
+            {updatePricesMutation.isPending ? '업데이트 중...' : '시세 업데이트'}
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -147,6 +186,35 @@ export default function DashboardPage() {
                 <p className={`text-2xl font-bold ${getReturnColor(totalReturnRate)}`}>
                   {formatPercent(totalReturnRate)}
                 </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <ArrowUpDown className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-gray-500">원/달러 환율</p>
+                <p className="text-2xl font-bold truncate">
+                  {exchangeRate?.USDKRW
+                    ? `₩${exchangeRate.USDKRW.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}`
+                    : '-'}
+                </p>
+                {exchangeRate?.fetchedAt && (
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {(() => {
+                      const diffMs = Date.now() - new Date(exchangeRate.fetchedAt).getTime();
+                      const diffMin = Math.floor(diffMs / 60000);
+                      if (diffMin < 1) return '방금 전';
+                      if (diffMin < 60) return `${diffMin}분 전`;
+                      return `${Math.floor(diffMin / 60)}시간 전`;
+                    })()}
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -261,9 +329,15 @@ export default function DashboardPage() {
                       <TableCell className="text-right">
                         {fieldConfig?.hideQuantity ? '-' : h.quantity.toLocaleString('ko-KR')}
                       </TableCell>
-                      <TableCell className="text-right">{formatCurrency(h.avgCostPrice, h.asset.currency)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(h.currentPrice, h.asset.currency)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(h.currentValue, h.asset.currency)}</TableCell>
+                      <TableCell className="text-right">
+                        {fieldConfig?.hideQuantity ? formatCurrency(h.totalCost, h.asset.currency) : formatCurrency(h.avgCostPrice, h.asset.currency)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fieldConfig?.hideQuantity ? formatCurrency(h.currentValue, h.asset.currency) : formatCurrency(h.currentPrice, h.asset.currency)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {fieldConfig?.hideQuantity ? '-' : formatCurrency(h.currentValue, h.asset.currency)}
+                      </TableCell>
                       <TableCell className={`text-right font-medium ${getReturnColor(h.returnAmount)}`}>
                         {h.returnAmount >= 0 ? '+' : ''}{formatCurrency(h.returnAmount, h.asset.currency)}
                       </TableCell>
@@ -324,6 +398,55 @@ export default function DashboardPage() {
                 })}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Latest News */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>최신 뉴스</CardTitle>
+          <Link to="/news" className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            전체보기 <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </CardHeader>
+        <CardContent className="p-0">
+          {(!newsData?.market || newsData.market.length === 0) ? (
+            <div className="flex items-center justify-center h-32 text-gray-400">
+              뉴스를 불러오는 중...
+            </div>
+          ) : (
+            <div className="divide-y">
+              {newsData.market.slice(0, 5).map((item, index) => (
+                <a
+                  key={`news-${index}`}
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 px-6 py-3 hover:bg-gray-50 transition-colors group"
+                >
+                  <Newspaper className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 truncate">
+                      {item.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {item.source && <span className="text-xs text-gray-400">{item.source}</span>}
+                      <span className="text-xs text-gray-300">
+                        {(() => {
+                          const diffMs = Date.now() - new Date(item.pubDate).getTime();
+                          const diffMin = Math.floor(diffMs / 60000);
+                          const diffHour = Math.floor(diffMin / 60);
+                          if (diffMin < 60) return `${diffMin}분 전`;
+                          if (diffHour < 24) return `${diffHour}시간 전`;
+                          return `${Math.floor(diffHour / 24)}일 전`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

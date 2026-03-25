@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { assetsApi, type Asset } from '@/lib/api';
+import { assetsApi, priceApi, type Asset } from '@/lib/api';
 import { formatCurrency, formatPercent, getReturnColor, getReturnBgColor, ASSET_TYPE_LABELS, ASSET_TYPE_BG_COLORS, ASSET_TYPE_FIELD_CONFIG, toCommaString, fromCommaString } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, RefreshCw, Briefcase, Banknote, PiggyBank, TrendingUp, TrendingDown, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, RefreshCw, Briefcase, Banknote, PiggyBank, TrendingUp, TrendingDown, FolderOpen, Download } from 'lucide-react';
+
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  return `${days}일 전`;
+}
 
 const ASSET_TYPES = ['KOREAN_STOCK', 'OVERSEAS_STOCK', 'REAL_ESTATE', 'DEPOSIT', 'GOLD', 'OTHER'];
 const CURRENCIES = ['KRW', 'USD'];
@@ -41,7 +53,7 @@ export default function AssetsPage() {
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
-  const [form, setForm] = useState({ name: '', type: 'KOREAN_STOCK', currency: 'KRW' });
+  const [form, setForm] = useState({ name: '', type: 'KOREAN_STOCK', currency: 'KRW', ticker: '' });
   const [holdingForm, setHoldingForm] = useState({
     quantity: '',
     avgCostPrice: '',
@@ -88,14 +100,26 @@ export default function AssetsPage() {
     },
   });
 
+  const [priceUpdateResult, setPriceUpdateResult] = useState<string | null>(null);
+
+  const updateAllPricesMutation = useMutation({
+    mutationFn: priceApi.updateAll,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      setPriceUpdateResult(`${data.updatedCount}개 업데이트 완료${data.failedCount > 0 ? `, ${data.failedCount}개 실패` : ''}`);
+      setTimeout(() => setPriceUpdateResult(null), 4000);
+    },
+  });
+
   function openCreate() {
-    setForm({ name: '', type: 'KOREAN_STOCK', currency: 'KRW' });
+    setForm({ name: '', type: 'KOREAN_STOCK', currency: 'KRW', ticker: '' });
     setDialogMode('create');
   }
 
   function openEdit(asset: Asset) {
     setSelectedAsset(asset);
-    setForm({ name: asset.name, type: asset.type, currency: asset.currency });
+    setForm({ name: asset.name, type: asset.type, currency: asset.currency, ticker: asset.ticker ?? '' });
     setDialogMode('edit');
   }
 
@@ -111,9 +135,12 @@ export default function AssetsPage() {
 
   function handleSubmit() {
     if (dialogMode === 'create') {
-      createMutation.mutate(form);
+      const payload = { ...form, ticker: form.ticker || undefined };
+      if (form.type === 'GOLD' && !form.ticker) payload.ticker = 'GC=F';
+      createMutation.mutate(payload);
     } else if (dialogMode === 'edit' && selectedAsset) {
-      updateMutation.mutate({ id: selectedAsset.id, data: form });
+      const payload = { ...form, ticker: form.ticker || undefined };
+      updateMutation.mutate({ id: selectedAsset.id, data: payload });
     } else if (dialogMode === 'updatePrice' && selectedAsset) {
       const fieldConfig = ASSET_TYPE_FIELD_CONFIG[selectedAsset.type];
       updateHoldingMutation.mutate({
@@ -149,10 +176,23 @@ export default function AssetsPage() {
           <h2 className="text-3xl font-bold text-gray-900">자산 관리</h2>
           <p className="text-gray-500 mt-1">보유 자산을 관리하세요</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          자산 추가
-        </Button>
+        <div className="flex items-center gap-2">
+          {priceUpdateResult && (
+            <span className="text-sm text-green-600 font-medium">{priceUpdateResult}</span>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => updateAllPricesMutation.mutate()}
+            disabled={updateAllPricesMutation.isPending}
+          >
+            <Download className={`h-4 w-4 mr-2 ${updateAllPricesMutation.isPending ? 'animate-pulse' : ''}`} />
+            {updateAllPricesMutation.isPending ? '업데이트 중...' : '시세 업데이트'}
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            자산 추가
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -266,13 +306,22 @@ export default function AssetsPage() {
                       {config?.hideQuantity ? '-' : (holding?.quantity?.toLocaleString('ko-KR') ?? 0)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(holding?.avgCostPrice ?? 0, asset.currency)}
+                      {config?.hideQuantity ? formatCurrency(totalCost, asset.currency) : formatCurrency(holding?.avgCostPrice ?? 0, asset.currency)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(holding?.currentPrice ?? 0, asset.currency)}
+                      {config?.hideQuantity ? (
+                        <div>{formatCurrency(currentValue, asset.currency)}</div>
+                      ) : (
+                        <>
+                          <div>{formatCurrency(holding?.currentPrice ?? 0, asset.currency)}</div>
+                          {holding?.priceUpdatedAt && (
+                            <div className="text-[10px] text-gray-400">{formatRelativeTime(holding.priceUpdatedAt)}</div>
+                          )}
+                        </>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(currentValue, asset.currency)}
+                      {config?.hideQuantity ? '-' : formatCurrency(currentValue, asset.currency)}
                     </TableCell>
                     <TableCell className={`text-right font-medium ${getReturnColor(returnAmount)}`}>
                       {returnAmount >= 0 ? '+' : ''}{formatCurrency(returnAmount, asset.currency)}
@@ -368,6 +417,31 @@ export default function AssetsPage() {
                 </SelectContent>
               </Select>
             </div>
+            {['KOREAN_STOCK', 'OVERSEAS_STOCK', 'GOLD'].includes(form.type) && (
+              <div>
+                <Label>종목 코드 (자동 시세용)</Label>
+                <Input
+                  value={form.type === 'GOLD' ? 'GC=F (자동)' : form.ticker}
+                  onChange={(e) => setForm({ ...form, ticker: e.target.value })}
+                  disabled={form.type === 'GOLD'}
+                  placeholder={
+                    form.type === 'KOREAN_STOCK'
+                      ? '예: 005930 (삼성전자)'
+                      : form.type === 'OVERSEAS_STOCK'
+                        ? '예: AAPL (Apple)'
+                        : ''
+                  }
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {form.type === 'KOREAN_STOCK'
+                    ? '네이버 금융 종목 코드 6자리'
+                    : form.type === 'OVERSEAS_STOCK'
+                      ? 'Yahoo Finance 티커 심볼'
+                      : '금 시세는 자동으로 가져옵니다'}
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogMode(null)}>취소</Button>

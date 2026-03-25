@@ -31,19 +31,21 @@ model Asset {
   name         String
   type         AssetType
   currency     Currency      @default(KRW)
+  ticker       String?
   createdAt    DateTime      @default(now())
   holding      Holding?
   transactions Transaction[]
 }
 
 model Holding {
-  id           String   @id @default(cuid())
-  assetId      String   @unique
-  asset        Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  quantity     Float    @default(0)
-  avgCostPrice Float    @default(0)
-  currentPrice Float    @default(0)
-  updatedAt    DateTime @updatedAt
+  id             String    @id @default(cuid())
+  assetId        String    @unique
+  asset          Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  quantity       Float     @default(0)
+  avgCostPrice   Float     @default(0)
+  currentPrice   Float     @default(0)
+  priceUpdatedAt DateTime?
+  updatedAt      DateTime  @updatedAt
 }
 
 model Transaction {

@@ -4,6 +4,8 @@ import DashboardPage from '@/pages/DashboardPage';
 import AssetsPage from '@/pages/AssetsPage';
 import TransactionsPage from '@/pages/TransactionsPage';
 import StrategyPage from '@/pages/StrategyPage';
+import InsightsPage from '@/pages/InsightsPage';
+import NewsPage from './pages/NewsPage';
 
 export default function App() {
   return (
@@ -14,6 +16,8 @@ export default function App() {
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/strategy" element={<StrategyPage />} />
+        <Route path="/insights" element={<InsightsPage />} />
+        <Route path="/news" element={<NewsPage />} />
       </Routes>
     </Layout>
   );
