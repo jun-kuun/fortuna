@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** 수익 계산: totalCost 기반 수익금 + 수익률 */
+export function calcReturn(totalCost: number, currentValue: number) {
+  const returnAmount = currentValue - totalCost;
+  const returnRate = totalCost > 0 ? (returnAmount / totalCost) * 100 : 0;
+  return { returnAmount, returnRate };
+}
+
 export function formatCurrency(value: number, currency: string = 'KRW'): string {
   if (currency === 'USD') {
     return new Intl.NumberFormat('en-US', {

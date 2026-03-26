@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { strategyApi, type InvestmentGoal, type GoalProjection } from '@/lib/api';
 import { formatCurrency, toCommaString, fromCommaString } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +44,9 @@ export default function GoalSimulationTab() {
       setDialogOpen(false);
       setSelectedGoalId(newGoal.id);
       setForm({ name: '', targetAmount: '', targetDate: '' });
+      toast.success('목표가 생성되었습니다');
     },
+    onError: () => toast.error('목표 생성에 실패했습니다'),
   });
 
   const deleteGoalMutation = useMutation({
@@ -51,7 +54,9 @@ export default function GoalSimulationTab() {
     onSuccess: (_, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['strategy', 'goals'] });
       if (selectedGoalId === deletedId) setSelectedGoalId(null);
+      toast.success('목표가 삭제되었습니다');
     },
+    onError: () => toast.error('목표 삭제에 실패했습니다'),
   });
 
   function handleSubmit() {

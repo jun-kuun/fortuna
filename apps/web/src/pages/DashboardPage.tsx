@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { portfolioApi, transactionsApi, priceApi, newsApi } from '@/lib/api';
 import {
-  formatCurrency, formatPercent, getReturnColor, getReturnBgColor, formatDate,
+  calcReturn, formatCurrency, formatPercent, getReturnColor, getReturnBgColor, formatDate,
   ASSET_TYPE_LABELS, ASSET_TYPE_COLORS, ASSET_TYPE_BG_COLORS, ASSET_TYPE_FIELD_CONFIG,
   DEPOSIT_SUB_TYPE_MAP, REAL_ESTATE_SUB_TYPE_MAP,
 } from '@/lib/utils';
@@ -31,9 +32,10 @@ export default function DashboardPage() {
       setPriceMsg(`${data.updatedCount}개 시세 업데이트 완료`);
       setTimeout(() => setPriceMsg(null), 4000);
     },
+    onError: () => toast.error('시세 업데이트에 실패했습니다'),
   });
 
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summary, isLoading: summaryLoading, isError: summaryError } = useQuery({
     queryKey: ['portfolio', 'summary'],
     queryFn: portfolioApi.getSummary,
   });
@@ -43,10 +45,11 @@ export default function DashboardPage() {
     queryFn: portfolioApi.getAllocation,
   });
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: () => transactionsApi.getAll(),
+  const { data: txData } = useQuery({
+    queryKey: ['transactions', 'recent'],
+    queryFn: () => transactionsApi.getAll(undefined, 1, 5),
   });
+  const transactions = txData?.items ?? [];
 
   const { data: newsData } = useQuery({
     queryKey: ['news', 'all'],
@@ -78,7 +81,7 @@ export default function DashboardPage() {
     }
     return Object.entries(grouped).map(([type, { totalCost, currentValue }]) => ({
       name: ASSET_TYPE_LABELS[type] ?? type,
-      returnRate: totalCost > 0 ? ((currentValue - totalCost) / totalCost) * 100 : 0,
+      returnRate: calcReturn(totalCost, currentValue).returnRate,
     }));
   }, [summary]);
 
@@ -87,16 +90,20 @@ export default function DashboardPage() {
     return [...summary.holdings].sort((a, b) => b.currentValue - a.currentValue);
   }, [summary]);
 
-  const recentTransactions = useMemo(() => {
-    return [...transactions]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
-  }, [transactions]);
+  const recentTransactions = transactions;
 
   if (summaryLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-500">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (summaryError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-red-500">데이터를 불러오는데 실패했습니다. 서버 연결을 확인해주세요.</div>
       </div>
     );
   }

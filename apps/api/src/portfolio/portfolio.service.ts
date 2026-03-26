@@ -18,14 +18,18 @@ export class PortfolioService {
         const totalCost = holding.quantity * holding.avgCostPrice;
         const returnAmount = currentValue - totalCost;
         const returnRate = totalCost > 0 ? (returnAmount / totalCost) * 100 : 0;
+        // 예적금은 만기 전 이자 없음 → 손익 0 처리
+        const isDeposit = asset.type === 'DEPOSIT';
+        const adjustedReturnAmount = isDeposit ? 0 : returnAmount;
+        const adjustedReturnRate = isDeposit ? 0 : returnRate;
 
         return {
           ...holding,
           asset: { ...asset, holding: undefined },
           currentValue,
           totalCost,
-          returnAmount,
-          returnRate,
+          returnAmount: adjustedReturnAmount,
+          returnRate: adjustedReturnRate,
         };
       });
 

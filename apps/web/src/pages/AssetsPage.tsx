@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { assetsApi, priceApi, transactionsApi, type Asset } from '@/lib/api';
-import { formatCurrency, formatPercent, getReturnColor, getReturnBgColor, ASSET_TYPE_LABELS, ASSET_TYPE_BG_COLORS, ASSET_TYPE_FIELD_CONFIG, REAL_ESTATE_SUB_TYPES, REAL_ESTATE_SUB_TYPE_MAP, DEPOSIT_SUB_TYPES, DEPOSIT_SUB_TYPE_MAP, toCommaString, fromCommaString } from '@/lib/utils';
+import { calcReturn, formatCurrency, formatPercent, getReturnColor, getReturnBgColor, ASSET_TYPE_LABELS, ASSET_TYPE_BG_COLORS, ASSET_TYPE_FIELD_CONFIG, REAL_ESTATE_SUB_TYPES, REAL_ESTATE_SUB_TYPE_MAP, DEPOSIT_SUB_TYPES, DEPOSIT_SUB_TYPE_MAP, toCommaString, fromCommaString } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,7 +90,9 @@ export default function AssetsPage() {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
       setDialogMode(null);
+      toast.success('자산이 추가되었습니다');
     },
+    onError: () => toast.error('자산 추가에 실패했습니다'),
   });
 
   const updateMutation = useMutation({
@@ -98,7 +101,9 @@ export default function AssetsPage() {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
       setDialogMode(null);
+      toast.success('자산이 수정되었습니다');
     },
+    onError: () => toast.error('자산 수정에 실패했습니다'),
   });
 
   const updateHoldingMutation = useMutation({
@@ -107,7 +112,9 @@ export default function AssetsPage() {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
       setDialogMode(null);
+      toast.success('보유 현황이 업데이트되었습니다');
     },
+    onError: () => toast.error('보유 현황 업데이트에 실패했습니다'),
   });
 
   const deleteMutation = useMutation({
@@ -115,7 +122,9 @@ export default function AssetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      toast.success('자산이 삭제되었습니다');
     },
+    onError: () => toast.error('자산 삭제에 실패했습니다'),
   });
 
   const createTransactionMutation = useMutation({
@@ -125,7 +134,9 @@ export default function AssetsPage() {
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setDialogMode(null);
+      toast.success('거래가 등록되었습니다');
     },
+    onError: () => toast.error('거래 등록에 실패했습니다'),
   });
 
   const [priceUpdateResult, setPriceUpdateResult] = useState<string | null>(null);
@@ -138,6 +149,7 @@ export default function AssetsPage() {
       setPriceUpdateResult(`${data.updatedCount}개 업데이트 완료${data.failedCount > 0 ? `, ${data.failedCount}개 실패` : ''}`);
       setTimeout(() => setPriceUpdateResult(null), 4000);
     },
+    onError: () => toast.error('시세 업데이트에 실패했습니다'),
   });
 
   function openCreate() {
@@ -221,8 +233,7 @@ export default function AssetsPage() {
       totalValue += qty * (a.holding?.currentPrice ?? 0);
       totalCost += qty * (a.holding?.avgCostPrice ?? 0);
     }
-    const totalReturn = totalValue - totalCost;
-    const totalReturnRate = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0;
+    const { returnAmount: totalReturn, returnRate: totalReturnRate } = calcReturn(totalCost, totalValue);
     return { totalValue, totalCost, totalReturn, totalReturnRate };
   }
 
@@ -369,8 +380,7 @@ export default function AssetsPage() {
                       const holding = asset.holding;
                       const currentValue = (holding?.quantity ?? 0) * (holding?.currentPrice ?? 0);
                       const totalCost = (holding?.quantity ?? 0) * (holding?.avgCostPrice ?? 0);
-                      const returnAmount = currentValue - totalCost;
-                      const returnRate = totalCost > 0 ? (returnAmount / totalCost) * 100 : 0;
+                      const { returnAmount, returnRate } = calcReturn(totalCost, currentValue);
                       const weight = assetsSummary.totalValue > 0 ? (currentValue / assetsSummary.totalValue) * 100 : 0;
 
                       return (
@@ -468,8 +478,7 @@ export default function AssetsPage() {
                       const holding = asset.holding;
                       const currentValue = (holding?.quantity ?? 0) * (holding?.currentPrice ?? 0);
                       const totalCost = (holding?.quantity ?? 0) * (holding?.avgCostPrice ?? 0);
-                      const returnAmount = currentValue - totalCost;
-                      const returnRate = totalCost > 0 ? (returnAmount / totalCost) * 100 : 0;
+                      const { returnAmount, returnRate } = calcReturn(totalCost, currentValue);
                       const weight = assetsSummary.totalValue > 0 ? (currentValue / assetsSummary.totalValue) * 100 : 0;
 
                       return (
@@ -649,8 +658,7 @@ export default function AssetsPage() {
                       const holding = asset.holding;
                       const totalCost = (holding?.quantity ?? 0) * (holding?.avgCostPrice ?? 0);
                       const currentValue = (holding?.quantity ?? 0) * (holding?.currentPrice ?? 0);
-                      const returnAmount = currentValue - totalCost;
-                      const returnRate = totalCost > 0 ? (returnAmount / totalCost) * 100 : 0;
+                      const { returnAmount, returnRate } = calcReturn(totalCost, currentValue);
                       const weight = assetsSummary.totalValue > 0 ? (currentValue / assetsSummary.totalValue) * 100 : 0;
                       const subConfig = REAL_ESTATE_SUB_TYPE_MAP[asset.subType ?? ''];
                       const txLabels = subConfig?.transactionLabels ?? { BUY: '매입', SELL: '매각' };

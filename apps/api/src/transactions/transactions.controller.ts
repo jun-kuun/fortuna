@@ -15,8 +15,14 @@ export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
   @Get()
-  findAll(@Query('assetId') assetId?: string) {
-    return this.transactionsService.findAll(assetId);
+  findAll(
+    @Query('assetId') assetId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const p = Math.max(1, parseInt(page ?? '1', 10) || 1);
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20', 10) || 20));
+    return this.transactionsService.findAll(assetId, p, l);
   }
 
   @Get(':id')

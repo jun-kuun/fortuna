@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsApi, assetsApi, type Transaction } from '@/lib/api';
+import toast from 'react-hot-toast';
 import { formatCurrency, formatDate, ASSET_TYPE_LABELS, ASSET_TYPE_FIELD_CONFIG, DEPOSIT_SUB_TYPE_MAP, REAL_ESTATE_SUB_TYPE_MAP } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,12 +27,17 @@ import { Trash2, Hash, ArrowDownCircle, ArrowUpCircle, Receipt } from 'lucide-re
 export default function TransactionsPage() {
   const queryClient = useQueryClient();
   const [filterAssetId, setFilterAssetId] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ['transactions', filterAssetId],
+  const { data: txData, isLoading } = useQuery({
+    queryKey: ['transactions', filterAssetId, page],
     queryFn: () =>
-      transactionsApi.getAll(filterAssetId !== 'all' ? filterAssetId : undefined),
+      transactionsApi.getAll(filterAssetId !== 'all' ? filterAssetId : undefined, page, pageSize),
   });
+
+  const transactions = txData?.items ?? [];
+  const totalPages = txData?.totalPages ?? 1;
 
   const { data: assets = [] } = useQuery({
     queryKey: ['assets'],
@@ -44,7 +50,9 @@ export default function TransactionsPage() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      toast.success('거래가 삭제되었습니다');
     },
+    onError: () => toast.error('거래 삭제에 실패했습니다'),
   });
 
   const stats = useMemo(() => {
@@ -55,8 +63,8 @@ export default function TransactionsPage() {
       else sellTotal += amount;
       feeTotal += tx.fee;
     }
-    return { count: transactions.length, buyTotal, sellTotal, feeTotal };
-  }, [transactions]);
+    return { count: txData?.total ?? 0, buyTotal, sellTotal, feeTotal };
+  }, [transactions, txData]);
 
   return (
     <div className="space-y-6">
@@ -124,7 +132,7 @@ export default function TransactionsPage() {
       {/* Filter */}
       <div className="flex items-center gap-3">
         <Label className="whitespace-nowrap">자산 필터:</Label>
-        <Select value={filterAssetId} onValueChange={setFilterAssetId}>
+        <Select value={filterAssetId} onValueChange={(v) => { setFilterAssetId(v); setPage(1); }}>
           <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
@@ -227,6 +235,31 @@ export default function TransactionsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+          >
+            이전
+          </Button>
+          <span className="text-sm text-gray-500">
+            {page} / {totalPages} 페이지
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            다음
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

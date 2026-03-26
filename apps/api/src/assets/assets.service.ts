@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto, UpdateHoldingDto } from './dto/update-asset.dto';
@@ -46,7 +46,14 @@ export class AssetsService {
   }
 
   async update(id: string, dto: UpdateAssetDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+    if (dto.type && dto.type !== existing.type) {
+      // 같은 카테고리 내 변경만 허용 (국내주식 ↔ 해외주식)
+      const stockTypes = ['KOREAN_STOCK', 'OVERSEAS_STOCK'];
+      if (!(stockTypes.includes(existing.type) && stockTypes.includes(dto.type))) {
+        throw new BadRequestException('자산 유형을 변경할 수 없습니다');
+      }
+    }
     const data: any = { ...dto };
     if (dto.maturityDate) data.maturityDate = new Date(dto.maturityDate);
     return this.prisma.asset.update({

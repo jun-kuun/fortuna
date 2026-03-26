@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { strategyApi, type RebalanceResult, type StrategyTemplate, type StrategyProfile } from '@/lib/api';
 import { ASSET_TYPE_LABELS, ASSET_TYPE_COLORS, formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +47,7 @@ export default function RebalancingTab() {
   const rebalanceMutation = useMutation({
     mutationFn: strategyApi.rebalance,
     onSuccess: (data) => setResults(data),
+    onError: () => toast.error('리밸런싱 분석에 실패했습니다'),
   });
 
   const saveProfileMutation = useMutation({
@@ -54,14 +56,18 @@ export default function RebalancingTab() {
       queryClient.invalidateQueries({ queryKey: ['strategy', 'profiles'] });
       setSaveDialogOpen(false);
       setProfileName('');
+      toast.success('전략이 저장되었습니다');
     },
+    onError: () => toast.error('전략 저장에 실패했습니다'),
   });
 
   const deleteProfileMutation = useMutation({
     mutationFn: strategyApi.deleteProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['strategy', 'profiles'] });
+      toast.success('전략이 삭제되었습니다');
     },
+    onError: () => toast.error('전략 삭제에 실패했습니다'),
   });
 
   const total = useMemo(

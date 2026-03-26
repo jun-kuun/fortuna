@@ -85,9 +85,17 @@ export const portfolioApi = {
 };
 
 // Transactions
+export interface PaginatedTransactions {
+  items: Transaction[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const transactionsApi = {
-  getAll: (assetId?: string) =>
-    api.get<Transaction[]>('/transactions', { params: assetId ? { assetId } : {} }).then((r) => r.data),
+  getAll: (assetId?: string, page = 1, limit = 20) =>
+    api.get<PaginatedTransactions>('/transactions', { params: { ...(assetId ? { assetId } : {}), page, limit } }).then((r) => r.data),
   create: (data: {
     assetId: string;
     type: 'BUY' | 'SELL';

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 
@@ -6,12 +6,25 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(assetId?: string) {
-    return this.prisma.transaction.findMany({
-      where: assetId ? { assetId } : undefined,
-      include: { asset: true },
-      orderBy: { date: 'desc' },
-    });
+  async findAll(assetId?: string, page = 1, limit = 20) {
+    const where = assetId ? { assetId } : undefined;
+    const [items, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where,
+        include: { asset: true },
+        orderBy: { date: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.transaction.count({ where }),
+    ]);
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {
@@ -26,8 +39,26 @@ export class TransactionsService {
   async create(dto: CreateTransactionDto) {
     const asset = await this.prisma.asset.findUnique({
       where: { id: dto.assetId },
+      include: { holding: true },
     });
     if (!asset) throw new NotFoundException(`Asset #${dto.assetId} not found`);
+
+    // 매도 시 보유량 초과 검증
+    if (dto.type === 'SELL' && asset.holding) {
+      const isAmountBased = asset.type === 'DEPOSIT' || asset.type === 'REAL_ESTATE';
+      if (isAmountBased && asset.type !== 'DEPOSIT') {
+        // 부동산: 금액 초과 검증
+        const currentAmount = asset.holding.avgCostPrice;
+        if (dto.price > currentAmount) {
+          throw new BadRequestException('보유 금액을 초과하여 처리할 수 없습니다');
+        }
+      } else if (!isAmountBased) {
+        // 주식/금: 수량 초과 검증
+        if (dto.quantity > asset.holding.quantity) {
+          throw new BadRequestException('보유 수량을 초과하여 매도할 수 없습니다');
+        }
+      }
+    }
 
     const transaction = await this.prisma.transaction.create({
       data: {
