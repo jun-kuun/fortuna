@@ -44,4 +44,9 @@ export class AssetsController {
   remove(@Param('id') id: string) {
     return this.assetsService.remove(id);
   }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.assetsService.restore(id);
+  }
 }

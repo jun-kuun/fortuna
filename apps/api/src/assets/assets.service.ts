@@ -9,6 +9,7 @@ export class AssetsService {
 
   async findAll() {
     return this.prisma.asset.findMany({
+      where: { deletedAt: null },
       include: { holding: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -19,7 +20,7 @@ export class AssetsService {
       where: { id },
       include: { holding: true, transactions: { orderBy: { date: 'desc' } } },
     });
-    if (!asset) throw new NotFoundException(`Asset #${id} not found`);
+    if (!asset || asset.deletedAt) throw new NotFoundException(`Asset #${id} not found`);
     return asset;
   }
 
@@ -79,6 +80,20 @@ export class AssetsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.asset.delete({ where: { id } });
+    return this.prisma.asset.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async restore(id: string) {
+    const asset = await this.prisma.asset.findUnique({ where: { id } });
+    if (!asset) throw new NotFoundException(`Asset #${id} not found`);
+    if (!asset.deletedAt) throw new BadRequestException('삭제되지 않은 자산입니다');
+    return this.prisma.asset.update({
+      where: { id },
+      data: { deletedAt: null },
+      include: { holding: true },
+    });
   }
 }

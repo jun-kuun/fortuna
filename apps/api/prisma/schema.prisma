@@ -36,8 +36,10 @@ model Asset {
   interestRate  Float?        // 연이율 (%), 예적금용
   maturityDate  DateTime?     // 만기일, 예적금용
   createdAt     DateTime      @default(now())
+  deletedAt     DateTime?
   holding       Holding?
   transactions  Transaction[]
+  priceHistory  PriceHistory[]
 }
 
 model Holding {
@@ -62,6 +64,16 @@ model Transaction {
   date    DateTime
   memo    String?
   createdAt DateTime      @default(now())
+}
+
+model PriceHistory {
+  id         String   @id @default(cuid())
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  price      Float
+  recordedAt DateTime @default(now())
+
+  @@index([assetId, recordedAt])
 }
 
 model StrategyProfile {

@@ -7,6 +7,7 @@ export class PortfolioService {
 
   async getSummary() {
     const assets = await this.prisma.asset.findMany({
+      where: { deletedAt: null },
       include: { holding: true },
     });
 
@@ -49,6 +50,7 @@ export class PortfolioService {
 
   async getAllocation() {
     const assets = await this.prisma.asset.findMany({
+      where: { deletedAt: null },
       include: { holding: true },
     });
 

@@ -65,9 +65,23 @@ export class PriceService {
     return rate;
   }
 
+  async getPriceHistory(assetId: string, days: number) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    return this.prisma.priceHistory.findMany({
+      where: {
+        assetId,
+        recordedAt: { gte: since },
+      },
+      orderBy: { recordedAt: 'asc' },
+    });
+  }
+
   async updateAllPrices(): Promise<PriceUpdateResult> {
     const assets = await this.prisma.asset.findMany({
       where: {
+        deletedAt: null,
         OR: [
           { ticker: { not: null } },
           { type: 'GOLD' },
@@ -146,6 +160,11 @@ export class PriceService {
               currentPrice: newPrice,
               priceUpdatedAt: new Date(),
             },
+          });
+
+          // 가격 이력 기록
+          await this.prisma.priceHistory.create({
+            data: { assetId: asset.id, price: newPrice },
           });
 
           updatedCount++;
@@ -257,6 +276,10 @@ export class PriceService {
             currentPrice: newPrice,
             priceUpdatedAt: new Date(),
           },
+        });
+
+        await this.prisma.priceHistory.create({
+          data: { assetId: asset.id, price: newPrice },
         });
 
         return {

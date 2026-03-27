@@ -15,6 +15,15 @@ export class PriceController {
     return this.priceService.updateAssetPrice(assetId);
   }
 
+  @Get('history/:assetId')
+  getHistory(
+    @Param('assetId') assetId: string,
+    @Query('days') days?: string,
+  ) {
+    const d = Math.min(365, Math.max(1, parseInt(days ?? '30', 10) || 30));
+    return this.priceService.getPriceHistory(assetId, d);
+  }
+
   @Get('exchange-rate')
   async getExchangeRate() {
     const rate = await this.priceService.getExchangeRate();

@@ -76,6 +76,7 @@ export const assetsApi = {
   updateHolding: (id: string, data: { quantity?: number; avgCostPrice?: number; currentPrice?: number }) =>
     api.patch<Holding>(`/assets/${id}/holding`, data).then((r) => r.data),
   delete: (id: string) => api.delete(`/assets/${id}`).then((r) => r.data),
+  restore: (id: string) => api.post(`/assets/${id}/restore`).then((r) => r.data),
 };
 
 // Portfolio
@@ -281,9 +282,18 @@ export interface PriceUpdateResult {
   updatedAt: string;
 }
 
+export interface PriceHistoryItem {
+  id: string;
+  assetId: string;
+  price: number;
+  recordedAt: string;
+}
+
 export const priceApi = {
   updateAll: () => api.post<PriceUpdateResult>('/prices/update-all').then((r) => r.data),
   updateOne: (assetId: string) => api.post(`/prices/update/${assetId}`).then((r) => r.data),
+  getHistory: (assetId: string, days = 30) =>
+    api.get<PriceHistoryItem[]>(`/prices/history/${assetId}`, { params: { days } }).then((r) => r.data),
   getExchangeRate: () =>
     api.get<{ USDKRW: number | null; fetchedAt: string }>('/prices/exchange-rate').then((r) => r.data),
 };

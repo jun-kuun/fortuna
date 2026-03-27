@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { assetsApi, priceApi, transactionsApi, type Asset } from '@/lib/api';
+import { assetsApi, priceApi, transactionsApi, type Asset, type PriceHistoryItem } from '@/lib/api';
 import { calcReturn, formatCurrency, formatPercent, getReturnColor, getReturnBgColor, ASSET_TYPE_LABELS, ASSET_TYPE_BG_COLORS, ASSET_TYPE_FIELD_CONFIG, REAL_ESTATE_SUB_TYPES, REAL_ESTATE_SUB_TYPE_MAP, DEPOSIT_SUB_TYPES, DEPOSIT_SUB_TYPE_MAP, toCommaString, fromCommaString } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, RefreshCw, Briefcase, Banknote, PiggyBank, TrendingUp, TrendingDown, FolderOpen, Download } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Plus, Pencil, Trash2, RefreshCw, Briefcase, Banknote, PiggyBank, TrendingUp, TrendingDown, FolderOpen, Download, BarChart3 } from 'lucide-react';
 
 function formatRelativeTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
@@ -48,7 +49,7 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 const ASSET_TYPES = ['KOREAN_STOCK', 'OVERSEAS_STOCK', 'REAL_ESTATE', 'DEPOSIT', 'GOLD', 'OTHER'];
 const CURRENCIES = ['KRW', 'USD'];
 
-type DialogMode = 'create' | 'edit' | 'updatePrice' | 'trade' | null;
+type DialogMode = 'create' | 'edit' | 'updatePrice' | 'trade' | 'chart' | null;
 type TabValue = 'stock' | 'gold' | 'deposit' | 'realestate';
 
 const TAB_DEFAULT_TYPE: Record<TabValue, string> = {
@@ -63,6 +64,8 @@ export default function AssetsPage() {
   const [activeTab, setActiveTab] = useState<TabValue>('stock');
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [chartDays, setChartDays] = useState(30);
+  const [chartData, setChartData] = useState<PriceHistoryItem[]>([]);
 
   const [form, setForm] = useState({ name: '', type: 'KOREAN_STOCK', currency: 'KRW', ticker: '', stockMarket: 'KOREAN_STOCK' as string, subType: 'JEONSE', interestRate: '', maturityDate: '' });
   const [holdingForm, setHoldingForm] = useState({
@@ -119,10 +122,27 @@ export default function AssetsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: assetsApi.delete,
-    onSuccess: () => {
+    onSuccess: (_, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
-      toast.success('자산이 삭제되었습니다');
+      toast((t) => (
+        <div className="flex items-center gap-3">
+          <span>자산이 삭제되었습니다</span>
+          <button
+            className="text-blue-600 font-medium hover:underline text-sm whitespace-nowrap"
+            onClick={() => {
+              assetsApi.restore(deletedId).then(() => {
+                queryClient.invalidateQueries({ queryKey: ['assets'] });
+                queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+                toast.dismiss(t.id);
+                toast.success('자산이 복원되었습니다');
+              });
+            }}
+          >
+            되돌리기
+          </button>
+        </div>
+      ), { duration: 5000 });
     },
     onError: () => toast.error('자산 삭제에 실패했습니다'),
   });
@@ -164,6 +184,18 @@ export default function AssetsPage() {
     setSelectedAsset(asset);
     setForm({ name: asset.name, type: asset.type, currency: asset.currency, ticker: asset.ticker ?? '', stockMarket: asset.type === 'OVERSEAS_STOCK' ? 'OVERSEAS_STOCK' : 'KOREAN_STOCK', subType: asset.subType ?? 'JEONSE', interestRate: asset.interestRate != null ? String(asset.interestRate) : '', maturityDate: asset.maturityDate ? asset.maturityDate.slice(0, 10) : '' });
     setDialogMode('edit');
+  }
+
+  async function openChart(asset: Asset, days = 30) {
+    setSelectedAsset(asset);
+    setChartDays(days);
+    setDialogMode('chart');
+    try {
+      const data = await priceApi.getHistory(asset.id, days);
+      setChartData(data);
+    } catch {
+      setChartData([]);
+    }
   }
 
   function openTrade(asset: Asset, type: 'BUY' | 'SELL') {
@@ -411,6 +443,7 @@ export default function AssetsPage() {
                           <TableCell className="text-right text-sm text-gray-500">{weight.toFixed(1)}%</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openChart(asset)} title="시세 차트"><BarChart3 className="h-4 w-4 text-gray-500" /></Button>
                               <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 h-8 text-xs font-medium" onClick={() => openTrade(asset, 'BUY')}>매수</Button>
                               <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-2 h-8 text-xs font-medium" onClick={() => openTrade(asset, 'SELL')}>매도</Button>
                               <Button variant="ghost" size="icon" onClick={() => openEdit(asset)} title="편집"><Pencil className="h-4 w-4" /></Button>
@@ -504,6 +537,7 @@ export default function AssetsPage() {
                           <TableCell className="text-right text-sm text-gray-500">{weight.toFixed(1)}%</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openChart(asset)} title="시세 차트"><BarChart3 className="h-4 w-4 text-gray-500" /></Button>
                               <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 h-8 text-xs font-medium" onClick={() => openTrade(asset, 'BUY')}>매수</Button>
                               <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-2 h-8 text-xs font-medium" onClick={() => openTrade(asset, 'SELL')}>매도</Button>
                               <Button variant="ghost" size="icon" onClick={() => openEdit(asset)} title="편집"><Pencil className="h-4 w-4" /></Button>
@@ -1172,6 +1206,42 @@ export default function AssetsPage() {
               </>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Price Chart Dialog */}
+      <Dialog open={dialogMode === 'chart'} onOpenChange={() => setDialogMode(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedAsset?.name} — 시세 추이</DialogTitle>
+          </DialogHeader>
+          <div className="flex gap-2 mb-4">
+            {[7, 30, 90].map((d) => (
+              <Button
+                key={d}
+                variant={chartDays === d ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => openChart(selectedAsset!, d)}
+              >
+                {d}일
+              </Button>
+            ))}
+          </div>
+          {chartData.length === 0 ? (
+            <div className="flex items-center justify-center h-48 text-gray-400">
+              시세 이력이 없습니다. 시세 업데이트 후 기록이 쌓입니다.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData.map((d) => ({ date: new Date(d.recordedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }), price: d.price }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(v, selectedAsset?.currency)} width={100} />
+                <Tooltip formatter={(value: number) => [formatCurrency(value, selectedAsset?.currency), '시세']} />
+                <Line type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </DialogContent>
       </Dialog>
     </div>
