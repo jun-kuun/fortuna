@@ -66,6 +66,9 @@ export class AssetsService {
 
   async updateHolding(assetId: string, dto: UpdateHoldingDto) {
     await this.findOne(assetId);
+    if (dto.currentPrice !== undefined && dto.currentPrice <= 0) {
+      throw new BadRequestException('현재가는 0보다 커야 합니다');
+    }
     return this.prisma.holding.upsert({
       where: { assetId },
       create: {

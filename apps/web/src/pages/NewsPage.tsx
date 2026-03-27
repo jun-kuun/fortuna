@@ -67,6 +67,7 @@ function NewsCard({ item }: { item: NewsItem }) {
 
 export default function NewsPage() {
   const [tab, setTab] = useState<'market' | 'assets'>('market');
+  const [assetFilter, setAssetFilter] = useState<string>('all');
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['news', 'all'],
@@ -76,7 +77,9 @@ export default function NewsPage() {
 
   const marketNews = data?.market ?? [];
   const assetNews = data?.assets ?? [];
-  const currentNews = tab === 'market' ? marketNews : assetNews;
+  const assetNames = [...new Set(assetNews.map((n) => n.relatedAsset).filter(Boolean))] as string[];
+  const filteredAssetNews = assetFilter === 'all' ? assetNews : assetNews.filter((n) => n.relatedAsset === assetFilter);
+  const currentNews = tab === 'market' ? marketNews : filteredAssetNews;
 
   return (
     <div className="space-y-6">
@@ -120,6 +123,29 @@ export default function NewsPage() {
           )}
         </Button>
       </div>
+
+      {/* Asset filter */}
+      {tab === 'assets' && assetNames.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={assetFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setAssetFilter('all')}
+          >
+            전체
+          </Button>
+          {assetNames.map((name) => (
+            <Button
+              key={name}
+              variant={assetFilter === name ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAssetFilter(name)}
+            >
+              {name}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       {isLoading ? (

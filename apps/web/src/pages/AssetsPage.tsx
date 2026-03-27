@@ -958,7 +958,13 @@ export default function AssetsPage() {
           })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogMode(null)}>취소</Button>
-            <Button onClick={handleSubmit} disabled={updateHoldingMutation.isPending}>
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                updateHoldingMutation.isPending ||
+                Number(fromCommaString(holdingForm.currentPrice)) <= 0
+              }
+            >
               저장
             </Button>
           </DialogFooter>

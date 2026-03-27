@@ -93,7 +93,7 @@ export class NewsService {
       assets = [asset];
     } else {
       assets = await this.prisma.asset.findMany({
-        where: { type: { in: ['KOREAN_STOCK', 'OVERSEAS_STOCK', 'GOLD'] } },
+        where: { deletedAt: null, type: { in: ['KOREAN_STOCK', 'OVERSEAS_STOCK', 'GOLD'] } },
       });
     }
 
