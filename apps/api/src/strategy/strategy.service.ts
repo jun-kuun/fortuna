@@ -256,6 +256,56 @@ export class StrategyService {
       ? monthlyProjections[monthlyProjections.length - 1].value
       : currentValue;
 
+    // 시나리오 분석: 보수적(2%), 보통(5%), 공격적(10%) 수익률
+    const scenarios = [
+      { label: '보수적', rate: 0.02 },
+      { label: '보통', rate: 0.05 },
+      { label: '공격적', rate: 0.10 },
+    ].map((s) => {
+      const mr = Math.pow(1 + s.rate, 1 / 12) - 1;
+      const finalValue = this.calcFinalValue(currentValue, monthly, mr, monthsRemaining);
+      return {
+        label: s.label,
+        annualRate: s.rate * 100,
+        finalValue,
+        onTrack: finalValue >= goal.targetAmount,
+      };
+    });
+
+    // 역산: 목표 달성에 필요한 월 투자액 (보통 5% 기준)
+    const normalMonthlyRate = Math.pow(1.05, 1 / 12) - 1;
+    const requiredMonthly = this.calcRequiredMonthly(
+      currentValue, goal.targetAmount, normalMonthlyRate, monthsRemaining,
+    );
+
+    // 조언 생성
+    const advice: string[] = [];
+    if (projectedFinalValue >= goal.targetAmount) {
+      const surplus = projectedFinalValue - goal.targetAmount;
+      advice.push(`현재 계획대로면 목표를 달성할 수 있어요 (${formatKRW(surplus)} 여유)`);
+    } else {
+      advice.push(`현재 계획으로는 ${formatKRW(goal.targetAmount - projectedFinalValue)} 부족해요`);
+    }
+
+    if (requiredMonthly > monthly) {
+      advice.push(`목표 달성을 위해 월 ${formatKRW(requiredMonthly)} 투자가 필요해요 (연 5% 기준)`);
+      if (monthly > 0) {
+        advice.push(`지금보다 월 ${formatKRW(requiredMonthly - monthly)} 더 투자하면 돼요`);
+      }
+    } else if (requiredMonthly >= 0) {
+      advice.push(`월 ${formatKRW(requiredMonthly)}만 투자해도 목표 달성 가능해요 (연 5% 기준)`);
+    }
+
+    // 추가 투자 없이 달성에 필요한 수익률
+    if (monthsRemaining > 0 && currentValue > 0) {
+      const requiredAnnualRate = (Math.pow(goal.targetAmount / currentValue, 12 / monthsRemaining) - 1) * 100;
+      if (requiredAnnualRate > 15) {
+        advice.push(`추가 투자 없이 달성하려면 연 ${requiredAnnualRate.toFixed(0)}% 수익이 필요해요 — 현실적이지 않아요`);
+      } else if (requiredAnnualRate > 0) {
+        advice.push(`추가 투자 없이도 연 ${requiredAnnualRate.toFixed(1)}% 수익이면 달성 가능해요`);
+      }
+    }
+
     return {
       goalId: goal.id,
       goalName: goal.name,
@@ -268,6 +318,34 @@ export class StrategyService {
       onTrack: projectedFinalValue >= goal.targetAmount,
       shortfall: Math.max(0, goal.targetAmount - projectedFinalValue),
       monthlyProjections,
+      scenarios,
+      requiredMonthly,
+      advice,
     };
   }
+
+  private calcFinalValue(current: number, monthly: number, monthlyRate: number, months: number): number {
+    const assetGrowth = current * Math.pow(1 + monthlyRate, months);
+    const investGrowth = monthlyRate > 0
+      ? monthly * (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate
+      : monthly * months;
+    return assetGrowth + investGrowth;
+  }
+
+  private calcRequiredMonthly(current: number, target: number, monthlyRate: number, months: number): number {
+    if (months <= 0) return Math.max(0, target - current);
+    const futureCurrentValue = current * Math.pow(1 + monthlyRate, months);
+    const gap = target - futureCurrentValue;
+    if (gap <= 0) return 0;
+    const factor = monthlyRate > 0
+      ? (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate
+      : months;
+    return Math.ceil(gap / factor);
+  }
+}
+
+function formatKRW(value: number): string {
+  if (value >= 100000000) return `${(value / 100000000).toFixed(1)}억원`;
+  if (value >= 10000) return `${Math.round(value / 10000)}만원`;
+  return `${value.toLocaleString()}원`;
 }

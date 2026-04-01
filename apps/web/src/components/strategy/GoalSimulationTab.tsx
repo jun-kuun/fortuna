@@ -14,7 +14,7 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { Plus, Trash2, Target, TrendingUp, TrendingDown, Info, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Target, CheckCircle, AlertTriangle } from 'lucide-react';
 
 export default function GoalSimulationTab() {
   const queryClient = useQueryClient();
@@ -147,22 +147,41 @@ export default function GoalSimulationTab() {
       {selectedGoalId && (
         projectionLoading ? (
           <div className="flex items-center justify-center h-32 text-gray-400">
-            시뮬레이션 계산 중...
+            분석 중...
           </div>
         ) : projection ? (
           <>
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* 핵심 결과 */}
+            <Card className={projection.onTrack ? 'border-green-200 bg-green-50/30' : 'border-amber-200 bg-amber-50/30'}>
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-start gap-3">
+                  {projection.onTrack ? (
+                    <CheckCircle className="h-6 w-6 text-green-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className={`text-lg font-bold ${projection.onTrack ? 'text-green-700' : 'text-amber-700'}`}>
+                      {projection.onTrack ? '목표 달성 가능!' : '현재 계획으로는 부족해요'}
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      {projection.advice.map((msg, i) => (
+                        <p key={i} className="text-sm text-gray-600">
+                          {i === 0 ? '' : '💡 '}{msg}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 요약 카드 */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="pt-4 pb-3">
                   <p className="text-xs text-gray-500">현재 자산</p>
                   <p className="text-lg font-bold">{formatCurrency(projection.currentValue)}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4 pb-3">
-                  <p className="text-xs text-gray-500">월 추가 투자</p>
-                  <p className="text-lg font-bold">{projection.monthlyInvestment > 0 ? formatCurrency(projection.monthlyInvestment) : '없음'}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -173,47 +192,48 @@ export default function GoalSimulationTab() {
               </Card>
               <Card>
                 <CardContent className="pt-4 pb-3">
-                  <p className="text-xs text-gray-500">예상 최종 금액</p>
-                  <p className={`text-lg font-bold ${projection.onTrack ? 'text-red-500' : 'text-blue-500'}`}>
-                    {formatCurrency(projection.projectedFinalValue)}
-                  </p>
+                  <p className="text-xs text-gray-500">월 투자액</p>
+                  <p className="text-lg font-bold">{projection.monthlyInvestment > 0 ? formatCurrency(projection.monthlyInvestment) : '없음'}</p>
                 </CardContent>
               </Card>
-              <Card className={projection.onTrack ? 'bg-green-50/50' : 'bg-amber-50/50'}>
+              <Card>
                 <CardContent className="pt-4 pb-3">
-                  <p className="text-xs text-gray-500">달성 전망</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {projection.onTrack ? (
-                      <>
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="font-bold text-green-700">달성 가능</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertTriangle className="h-5 w-5 text-amber-600" />
-                        <span className="font-bold text-amber-700">
-                          {formatCurrency(projection.shortfall)} 부족
-                        </span>
-                      </>
-                    )}
-                  </div>
+                  <p className="text-xs text-gray-500">필요 월 투자액</p>
+                  <p className="text-lg font-bold text-blue-600">{formatCurrency(projection.requiredMonthly)}</p>
+                  <p className="text-[10px] text-gray-400">연 5% 수익률 기준</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Info */}
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <Info className="h-3.5 w-3.5" />
-              과거 연평균 수익률 {projection.cagr.toFixed(1)}% 기준 예측이며, 실제 결과는 달라질 수 있습니다
-            </div>
+            {/* 시나리오 비교 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>수익률별 예상 결과</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4">
+                  {projection.scenarios.map((s) => (
+                    <div key={s.label} className={`rounded-lg p-4 text-center ${s.onTrack ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
+                      <p className="text-sm font-medium text-gray-600">{s.label} (연 {s.annualRate}%)</p>
+                      <p className={`text-xl font-bold mt-1 ${s.onTrack ? 'text-green-700' : 'text-gray-700'}`}>
+                        {formatCurrency(s.finalValue)}
+                      </p>
+                      <p className={`text-xs mt-1 ${s.onTrack ? 'text-green-600' : 'text-gray-400'}`}>
+                        {s.onTrack ? '달성 가능' : '미달'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Projection Chart */}
+            {/* 차트 */}
             <Card>
               <CardHeader>
                 <CardTitle>예상 자산 변화</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
+                <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis
@@ -244,12 +264,6 @@ export default function GoalSimulationTab() {
                       stroke="#3b82f6"
                       strokeDasharray="8 4"
                       strokeWidth={2}
-                      label={{
-                        value: `목표: ${formatCurrency(projection.targetAmount)}`,
-                        position: 'right',
-                        fill: '#3b82f6',
-                        fontSize: 11,
-                      }}
                     />
                     <defs>
                       <linearGradient id="projGradient" x1="0" y1="0" x2="0" y2="1">
@@ -266,6 +280,9 @@ export default function GoalSimulationTab() {
                     />
                   </AreaChart>
                 </ResponsiveContainer>
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  과거 연평균 수익률 {projection.cagr.toFixed(1)}% 기준 · 실제 결과는 달라질 수 있습니다
+                </p>
               </CardContent>
             </Card>
           </>

@@ -167,6 +167,9 @@ export interface GoalProjection {
   onTrack: boolean;
   shortfall: number;
   monthlyProjections: Array<{ date: string; value: number }>;
+  scenarios: Array<{ label: string; annualRate: number; finalValue: number; onTrack: boolean }>;
+  requiredMonthly: number;
+  advice: string[];
 }
 
 export const strategyApi = {
