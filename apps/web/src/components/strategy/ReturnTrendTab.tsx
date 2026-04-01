@@ -57,8 +57,8 @@ export default function ReturnTrendTab() {
       <Card>
         <CardContent className="flex flex-col items-center justify-center h-64 text-gray-400">
           <Info className="h-8 w-8 mb-2" />
-          <p>거래 내역이 없어 수익 추이를 표시할 수 없습니다.</p>
-          <p className="text-sm mt-1">거래를 추가하면 자동으로 수익 추이가 계산됩니다.</p>
+          <p>아직 거래 내역이 없어요</p>
+          <p className="text-sm mt-1">거래가 쌓이면 투자 성과를 확인할 수 있습니다</p>
         </CardContent>
       </Card>
     );
@@ -89,14 +89,14 @@ export default function ReturnTrendTab() {
         </div>
         <div className="flex items-center gap-1 ml-auto text-xs text-gray-400">
           <Info className="h-3.5 w-3.5" />
-          거래 가격 기준 근사치입니다
+          실제 거래 기준 추정치예요
         </div>
       </div>
 
       {/* Portfolio Value Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>포트폴리오 가치 추이</CardTitle>
+          <CardTitle>내 자산 변화</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
@@ -136,7 +136,7 @@ export default function ReturnTrendTab() {
       {/* Return Rate Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>수익률 추이</CardTitle>
+          <CardTitle>수익률 변화</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={250}>
@@ -172,7 +172,7 @@ export default function ReturnTrendTab() {
       {typePerformance.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>자산 유형별 성과 비교</CardTitle>
+            <CardTitle>유형별 수익률 비교</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>

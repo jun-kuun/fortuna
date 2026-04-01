@@ -89,8 +89,8 @@ export default function GoalSimulationTab() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center h-48 text-gray-400">
             <Target className="h-8 w-8 mb-2" />
-            <p>설정된 투자 목표가 없습니다.</p>
-            <p className="text-sm mt-1">목표를 추가하면 달성 가능성을 시뮬레이션합니다.</p>
+            <p>아직 설정된 목표가 없어요</p>
+            <p className="text-sm mt-1">목표를 추가하면 달성 가능성을 계산해드립니다</p>
           </CardContent>
         </Card>
       ) : (
@@ -161,7 +161,7 @@ export default function GoalSimulationTab() {
               </Card>
               <Card>
                 <CardContent className="pt-4 pb-3">
-                  <p className="text-xs text-gray-500">예상 도달 금액</p>
+                  <p className="text-xs text-gray-500">예상 최종 금액</p>
                   <p className={`text-lg font-bold ${projection.onTrack ? 'text-red-500' : 'text-blue-500'}`}>
                     {formatCurrency(projection.projectedFinalValue)}
                   </p>
@@ -192,13 +192,13 @@ export default function GoalSimulationTab() {
             {/* Info */}
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <Info className="h-3.5 w-3.5" />
-              과거 수익률(CAGR {projection.cagr.toFixed(1)}%) 기반 복리 추정치이며, 미래 수익을 보장하지 않습니다.
+              과거 연평균 수익률 {projection.cagr.toFixed(1)}% 기준 예측이며, 실제 결과는 달라질 수 있습니다
             </div>
 
             {/* Projection Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>자산 성장 예측</CardTitle>
+                <CardTitle>예상 자산 변화</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={350}>

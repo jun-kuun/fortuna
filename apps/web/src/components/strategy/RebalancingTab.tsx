@@ -47,7 +47,7 @@ export default function RebalancingTab() {
   const rebalanceMutation = useMutation({
     mutationFn: strategyApi.rebalance,
     onSuccess: (data) => setResults(data),
-    onError: () => toast.error('리밸런싱 분석에 실패했습니다'),
+    onError: () => toast.error('비중 분석에 실패했습니다'),
   });
 
   const saveProfileMutation = useMutation({
@@ -98,7 +98,7 @@ export default function RebalancingTab() {
     <div className="space-y-6">
       {/* Templates */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">전략 템플릿</h3>
+        <h3 className="text-lg font-semibold mb-3">추천 투자 스타일</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {templates.map((t: StrategyTemplate) => (
             <Card
@@ -118,7 +118,7 @@ export default function RebalancingTab() {
       {/* Saved Profiles */}
       {profiles.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold mb-3">저장된 프로필</h3>
+          <h3 className="text-lg font-semibold mb-3">내가 저장한 스타일</h3>
           <div className="flex flex-wrap gap-2">
             {profiles.map((p: StrategyProfile) => (
               <div key={p.id} className="flex items-center gap-1">
@@ -151,7 +151,7 @@ export default function RebalancingTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>목표 배분 설정</CardTitle>
+            <CardTitle>내가 원하는 비중</CardTitle>
             <div className="flex items-center gap-2">
               <span className={`text-sm font-medium ${isValid ? 'text-green-600' : 'text-red-500'}`}>
                 합계: {total.toFixed(1)}%
@@ -210,7 +210,7 @@ export default function RebalancingTab() {
               disabled={!isValid || rebalanceMutation.isPending}
               className="px-8"
             >
-              {rebalanceMutation.isPending ? '계산 중...' : '리밸런싱 계산'}
+              {rebalanceMutation.isPending ? '분석 중...' : '비중 분석하기'}
             </Button>
           </div>
         </CardContent>
@@ -247,10 +247,10 @@ export default function RebalancingTab() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <CardTitle>리밸런싱 추천</CardTitle>
+                <CardTitle>이렇게 조정하세요</CardTitle>
                 <div className="flex items-center gap-1 text-xs text-gray-400">
                   <Info className="h-3.5 w-3.5" />
-                  현재 포트폴리오 총액 기준
+                  현재 총자산 기준
                 </div>
               </div>
             </CardHeader>
@@ -312,14 +312,14 @@ export default function RebalancingTab() {
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>배분 프로필 저장</DialogTitle>
+            <DialogTitle>내 투자 스타일 저장</DialogTitle>
           </DialogHeader>
           <div>
-            <Label>프로필 이름</Label>
+            <Label>스타일 이름</Label>
             <Input
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
-              placeholder="예: 나의 안정형 전략"
+              placeholder="예: 내 안정형 스타일"
               className="mt-1"
             />
           </div>

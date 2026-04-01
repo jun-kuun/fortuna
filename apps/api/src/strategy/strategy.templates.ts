@@ -1,8 +1,8 @@
 export const STRATEGY_TEMPLATES = [
   {
     id: 'all-weather',
-    name: '올웨더 포트폴리오',
-    description: '레이 달리오의 사계절 포트폴리오. 어떤 경제 환경에서도 안정적인 수익을 추구합니다.',
+    name: '안정형 (사계절)',
+    description: '경기가 좋든 나쁘든 꾸준히 버티는 스타일. 예적금 비중이 높고, 주식·금을 고르게 섞습니다.',
     allocations: {
       KOREAN_STOCK: 15,
       OVERSEAS_STOCK: 15,
@@ -14,8 +14,8 @@ export const STRATEGY_TEMPLATES = [
   },
   {
     id: 'sixty-forty',
-    name: '60/40 포트폴리오',
-    description: '전통적인 주식 60% + 채권(예적금) 40% 배분 전략입니다.',
+    name: '균형형 (6:4)',
+    description: '주식 60% + 예적금 40%의 전통적인 배분. 성장과 안정 사이 균형을 잡습니다.',
     allocations: {
       KOREAN_STOCK: 30,
       OVERSEAS_STOCK: 30,
@@ -27,8 +27,8 @@ export const STRATEGY_TEMPLATES = [
   },
   {
     id: 'permanent',
-    name: '영구 포트폴리오',
-    description: '해리 브라운의 4등분 포트폴리오. 주식, 채권, 금, 현금을 균등 배분합니다.',
+    name: '방어형 (4등분)',
+    description: '주식·예적금·금을 고르게 나눠서 어떤 상황에서도 크게 잃지 않는 전략입니다.',
     allocations: {
       KOREAN_STOCK: 12.5,
       OVERSEAS_STOCK: 12.5,
@@ -40,8 +40,8 @@ export const STRATEGY_TEMPLATES = [
   },
   {
     id: 'growth',
-    name: '성장 공격형',
-    description: '주식 비중을 극대화하여 장기 성장을 추구하는 공격적 전략입니다.',
+    name: '공격형 (성장)',
+    description: '주식 비중을 최대로! 장기적으로 높은 수익을 노리지만 변동성도 큽니다.',
     allocations: {
       KOREAN_STOCK: 40,
       OVERSEAS_STOCK: 40,

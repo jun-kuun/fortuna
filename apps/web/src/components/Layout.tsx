@@ -6,7 +6,7 @@ const navItems = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { to: '/assets', label: '자산 관리', icon: Wallet },
   { to: '/transactions', label: '거래 내역', icon: ArrowLeftRight },
-  { to: '/strategy', label: '투자 전략', icon: Target },
+  { to: '/strategy', label: '투자 플랜', icon: Target },
   { to: '/insights', label: '자산 진단', icon: HeartPulse },
   { to: '/news', icon: Newspaper, label: '뉴스' },
 ];
