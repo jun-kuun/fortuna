@@ -24,6 +24,7 @@ export default function GoalSimulationTab() {
     name: '',
     targetAmount: '',
     targetDate: '',
+    monthlyInvestment: '',
   });
 
   const { data: goals = [] } = useQuery({
@@ -43,7 +44,7 @@ export default function GoalSimulationTab() {
       queryClient.invalidateQueries({ queryKey: ['strategy', 'goals'] });
       setDialogOpen(false);
       setSelectedGoalId(newGoal.id);
-      setForm({ name: '', targetAmount: '', targetDate: '' });
+      setForm({ name: '', targetAmount: '', targetDate: '', monthlyInvestment: '' });
       toast.success('목표가 생성되었습니다');
     },
     onError: () => toast.error('목표 생성에 실패했습니다'),
@@ -61,11 +62,13 @@ export default function GoalSimulationTab() {
 
   function handleSubmit() {
     const amount = Number(fromCommaString(form.targetAmount));
+    const monthly = Number(fromCommaString(form.monthlyInvestment)) || 0;
     if (!form.name || !amount || !form.targetDate) return;
     createGoalMutation.mutate({
       name: form.name,
       targetAmount: amount,
       targetDate: form.targetDate,
+      monthlyInvestment: monthly,
     });
   }
 
@@ -111,7 +114,10 @@ export default function GoalSimulationTab() {
                       <p className="text-lg font-bold text-blue-600 mt-1">
                         {formatCurrency(g.targetAmount)}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      {g.monthlyInvestment > 0 && (
+                        <p className="text-xs text-gray-500 mt-0.5">월 {formatCurrency(g.monthlyInvestment)} 투자</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-0.5">
                         {targetDate.toLocaleDateString('ko-KR')} 까지
                         {daysLeft > 0 && <span className="ml-1 text-gray-400">({daysLeft}일 남음)</span>}
                       </p>
@@ -146,11 +152,17 @@ export default function GoalSimulationTab() {
         ) : projection ? (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
               <Card>
                 <CardContent className="pt-4 pb-3">
                   <p className="text-xs text-gray-500">현재 자산</p>
                   <p className="text-lg font-bold">{formatCurrency(projection.currentValue)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-xs text-gray-500">월 추가 투자</p>
+                  <p className="text-lg font-bold">{projection.monthlyInvestment > 0 ? formatCurrency(projection.monthlyInvestment) : '없음'}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -286,6 +298,18 @@ export default function GoalSimulationTab() {
                 placeholder="100,000,000"
                 className="mt-1"
               />
+            </div>
+            <div>
+              <Label>월 추가 투자액</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={form.monthlyInvestment}
+                onChange={(e) => setForm({ ...form, monthlyInvestment: toCommaString(e.target.value) })}
+                placeholder="매달 추가로 투자할 금액 (없으면 0)"
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-400 mt-1">적금 납입, 주식 적립 등 매달 넣는 금액</p>
             </div>
             <div>
               <Label>목표 날짜</Label>

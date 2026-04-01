@@ -192,12 +192,13 @@ export class StrategyService {
     });
   }
 
-  async createGoal(data: { name: string; targetAmount: number; targetDate: string }) {
+  async createGoal(data: { name: string; targetAmount: number; targetDate: string; monthlyInvestment?: number }) {
     return this.prisma.investmentGoal.create({
       data: {
         name: data.name,
         targetAmount: data.targetAmount,
         targetDate: new Date(data.targetDate),
+        monthlyInvestment: data.monthlyInvestment ?? 0,
       },
     });
   }
@@ -235,17 +236,25 @@ export class StrategyService {
         (targetDate.getMonth() - now.getMonth()),
     );
 
+    const monthly = goal.monthlyInvestment ?? 0;
+
     const monthlyProjections: Array<{ date: string; value: number }> = [];
     for (let i = 0; i <= monthsRemaining; i++) {
       const projDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      const projectedValue = currentValue * Math.pow(1 + monthlyRate, i);
+      // 기존 자산 복리 + 매월 추가 투자 적립
+      const assetGrowth = currentValue * Math.pow(1 + monthlyRate, i);
+      const investmentGrowth = monthlyRate > 0
+        ? monthly * (Math.pow(1 + monthlyRate, i) - 1) / monthlyRate
+        : monthly * i;
       monthlyProjections.push({
         date: projDate.toISOString().slice(0, 7),
-        value: projectedValue,
+        value: assetGrowth + investmentGrowth,
       });
     }
 
-    const projectedFinalValue = currentValue * Math.pow(1 + monthlyRate, monthsRemaining);
+    const projectedFinalValue = monthlyProjections.length > 0
+      ? monthlyProjections[monthlyProjections.length - 1].value
+      : currentValue;
 
     return {
       goalId: goal.id,
@@ -254,6 +263,7 @@ export class StrategyService {
       targetAmount: goal.targetAmount,
       targetDate: goal.targetDate.toISOString().slice(0, 10),
       projectedFinalValue,
+      monthlyInvestment: monthly,
       cagr: cagr * 100,
       onTrack: projectedFinalValue >= goal.targetAmount,
       shortfall: Math.max(0, goal.targetAmount - projectedFinalValue),

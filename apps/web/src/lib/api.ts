@@ -150,6 +150,7 @@ export interface InvestmentGoal {
   name: string;
   targetAmount: number;
   targetDate: string;
+  monthlyInvestment: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -161,6 +162,7 @@ export interface GoalProjection {
   targetAmount: number;
   targetDate: string;
   projectedFinalValue: number;
+  monthlyInvestment: number;
   cagr: number;
   onTrack: boolean;
   shortfall: number;
@@ -184,7 +186,7 @@ export const strategyApi = {
     api.get<ReturnHistoryPoint[]>('/strategy/return-history', { params: { period } }).then((r) => r.data),
   getGoals: () =>
     api.get<InvestmentGoal[]>('/strategy/goals').then((r) => r.data),
-  createGoal: (data: { name: string; targetAmount: number; targetDate: string }) =>
+  createGoal: (data: { name: string; targetAmount: number; targetDate: string; monthlyInvestment?: number }) =>
     api.post<InvestmentGoal>('/strategy/goals', data).then((r) => r.data),
   deleteGoal: (id: string) =>
     api.delete(`/strategy/goals/${id}`).then((r) => r.data),
