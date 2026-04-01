@@ -46,6 +46,26 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
   return `${days}일 전`;
 }
 
+function PriceChangeCell({ currentPrice, priceChange, priceChangePercent, currency, priceUpdatedAt }: {
+  currentPrice: number; priceChange?: number | null; priceChangePercent?: number | null; currency?: string; priceUpdatedAt?: string | null;
+}) {
+  const hasChange = priceChange != null && priceChangePercent != null;
+  const color = hasChange ? (priceChange > 0 ? 'text-red-500' : priceChange < 0 ? 'text-blue-500' : 'text-gray-400') : '';
+  return (
+    <TableCell className="text-right">
+      <div>{formatCurrency(currentPrice, currency)}</div>
+      {hasChange && (
+        <div className={`text-[10px] ${color}`}>
+          {priceChange > 0 ? '▲' : priceChange < 0 ? '▼' : '-'} {formatCurrency(Math.abs(priceChange), currency)} ({priceChange >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
+        </div>
+      )}
+      {priceUpdatedAt && (
+        <div className="text-[10px] text-gray-400">{formatRelativeTime(priceUpdatedAt)}</div>
+      )}
+    </TableCell>
+  );
+}
+
 const ASSET_TYPES = ['KOREAN_STOCK', 'OVERSEAS_STOCK', 'REAL_ESTATE', 'DEPOSIT', 'GOLD', 'OTHER'];
 const CURRENCIES = ['KRW', 'USD'];
 
@@ -425,12 +445,13 @@ export default function AssetsPage() {
                           </TableCell>
                           <TableCell className="text-right">{(holding?.quantity ?? 0).toLocaleString('ko-KR')}</TableCell>
                           <TableCell className="text-right">{formatCurrency(holding?.avgCostPrice ?? 0, asset.currency)}</TableCell>
-                          <TableCell className="text-right">
-                            <div>{formatCurrency(holding?.currentPrice ?? 0, asset.currency)}</div>
-                            {holding?.priceUpdatedAt && (
-                              <div className="text-[10px] text-gray-400">{formatRelativeTime(holding.priceUpdatedAt)}</div>
-                            )}
-                          </TableCell>
+                          <PriceChangeCell
+                            currentPrice={holding?.currentPrice ?? 0}
+                            priceChange={holding?.priceChange}
+                            priceChangePercent={holding?.priceChangePercent}
+                            currency={asset.currency}
+                            priceUpdatedAt={holding?.priceUpdatedAt}
+                          />
                           <TableCell className="text-right font-medium">{formatCurrency(currentValue, asset.currency)}</TableCell>
                           <TableCell className={`text-right font-medium ${getReturnColor(returnAmount)}`}>
                             {returnAmount >= 0 ? '+' : ''}{formatCurrency(returnAmount, asset.currency)}
@@ -519,12 +540,13 @@ export default function AssetsPage() {
                           <TableCell className="font-medium">{asset.name}</TableCell>
                           <TableCell className="text-right">{(holding?.quantity ?? 0).toLocaleString('ko-KR', { maximumFractionDigits: 2 })}g</TableCell>
                           <TableCell className="text-right">{formatCurrency(holding?.avgCostPrice ?? 0, asset.currency)}</TableCell>
-                          <TableCell className="text-right">
-                            <div>{formatCurrency(holding?.currentPrice ?? 0, asset.currency)}</div>
-                            {holding?.priceUpdatedAt && (
-                              <div className="text-[10px] text-gray-400">{formatRelativeTime(holding.priceUpdatedAt)}</div>
-                            )}
-                          </TableCell>
+                          <PriceChangeCell
+                            currentPrice={holding?.currentPrice ?? 0}
+                            priceChange={holding?.priceChange}
+                            priceChangePercent={holding?.priceChangePercent}
+                            currency={asset.currency}
+                            priceUpdatedAt={holding?.priceUpdatedAt}
+                          />
                           <TableCell className="text-right font-medium">{formatCurrency(currentValue, asset.currency)}</TableCell>
                           <TableCell className={`text-right font-medium ${getReturnColor(returnAmount)}`}>
                             {returnAmount >= 0 ? '+' : ''}{formatCurrency(returnAmount, asset.currency)}

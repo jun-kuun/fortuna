@@ -26,6 +26,8 @@ export interface Holding {
   quantity: number;
   avgCostPrice: number;
   currentPrice: number;
+  priceChange?: number | null;
+  priceChangePercent?: number | null;
   priceUpdatedAt?: string | null;
   updatedAt: string;
 }

@@ -48,8 +48,10 @@ model Holding {
   asset          Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
   quantity       Float     @default(0)
   avgCostPrice   Float     @default(0)
-  currentPrice   Float     @default(0)
-  priceUpdatedAt DateTime?
+  currentPrice        Float     @default(0)
+  priceChange         Float?
+  priceChangePercent  Float?
+  priceUpdatedAt      DateTime?
   updatedAt      DateTime  @updatedAt
 }
 

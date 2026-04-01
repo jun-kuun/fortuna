@@ -29,17 +29,30 @@ export class KoreanStockProvider implements PriceProvider {
         v ? parseFloat(v.replace(/,/g, '')) : NaN;
 
       const price =
-        strip(data.closePrice) ||
-        strip(data.currentPrice);
+        strip(data.currentPrice) ||
+        strip(data.closePrice);
 
       if (!price || isNaN(price)) {
         this.logger.warn(`Could not parse price for Korean stock ${ticker}`);
         return null;
       }
 
+      // 전일 대비 변동액/변동률
+      const comparePrice = strip(data.compareToPreviousClosePrice);
+      const direction = data.compareToPreviousPrice?.name;
+      const fluctRatio = parseFloat(data.fluctuationsRatio);
+      let priceChange: number | undefined;
+      let priceChangePercent: number | undefined;
+      if (comparePrice && !isNaN(comparePrice)) {
+        priceChange = direction === 'FALLING' ? -comparePrice : comparePrice;
+        priceChangePercent = direction === 'FALLING' ? -Math.abs(fluctRatio) : Math.abs(fluctRatio);
+      }
+
       return {
         ticker,
         price,
+        priceChange,
+        priceChangePercent,
         currency: 'KRW',
         fetchedAt: new Date(),
       };

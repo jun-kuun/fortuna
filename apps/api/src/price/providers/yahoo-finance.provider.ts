@@ -30,6 +30,7 @@ export class YahooFinanceProvider implements PriceProvider {
       }
 
       const price = result.meta?.regularMarketPrice;
+      const prevClose = result.meta?.previousClose ?? result.meta?.chartPreviousClose;
       const currency = result.meta?.currency ?? 'USD';
 
       if (!price || isNaN(price)) {
@@ -37,9 +38,18 @@ export class YahooFinanceProvider implements PriceProvider {
         return null;
       }
 
+      let priceChange: number | undefined;
+      let priceChangePercent: number | undefined;
+      if (prevClose && !isNaN(prevClose) && prevClose > 0) {
+        priceChange = price - prevClose;
+        priceChangePercent = (priceChange / prevClose) * 100;
+      }
+
       return {
         ticker,
         price,
+        priceChange,
+        priceChangePercent,
         currency,
         fetchedAt: new Date(),
       };
@@ -62,12 +72,15 @@ export class YahooFinanceProvider implements PriceProvider {
    * Gold futures (GC=F) are in USD per troy ounce
    * 1 troy ounce = 31.1035 grams
    */
-  async fetchGoldPriceKRW(usdKrwRate: number): Promise<number | null> {
+  async fetchGoldPriceKRW(usdKrwRate: number): Promise<{ price: number; priceChange?: number; priceChangePercent?: number } | null> {
     const result = await this.fetchPrice('GC=F');
     if (!result) return null;
 
-    const usdPerOz = result.price;
-    const krwPerGram = (usdPerOz / 31.1035) * usdKrwRate;
-    return Math.round(krwPerGram);
+    const krwPerGram = (result.price / 31.1035) * usdKrwRate;
+    return {
+      price: Math.round(krwPerGram),
+      priceChange: result.priceChange != null ? Math.round((result.priceChange / 31.1035) * usdKrwRate) : undefined,
+      priceChangePercent: result.priceChangePercent,
+    };
   }
 }

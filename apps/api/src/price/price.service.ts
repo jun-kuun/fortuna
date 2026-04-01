@@ -115,12 +115,16 @@ export class PriceService {
 
       try {
         let newPrice: number | null = null;
+        let priceChange: number | undefined = undefined;
+        let priceChangePercent: number | undefined = undefined;
 
         switch (asset.type) {
           case 'KOREAN_STOCK': {
             if (!ticker) { skippedCount++; results.push({ assetId: asset.id, assetName: asset.name, ticker, oldPrice, newPrice: oldPrice, status: 'skipped' }); continue; }
             const result = await this.koreanProvider.fetchPrice(ticker);
             newPrice = result?.price ?? null;
+            priceChange = result?.priceChange;
+            priceChangePercent = result?.priceChangePercent;
             break;
           }
 
@@ -128,6 +132,8 @@ export class PriceService {
             if (!ticker) { skippedCount++; results.push({ assetId: asset.id, assetName: asset.name, ticker, oldPrice, newPrice: oldPrice, status: 'skipped' }); continue; }
             const result = await this.yahooProvider.fetchPrice(ticker);
             newPrice = result?.price ?? null;
+            priceChange = result?.priceChange;
+            priceChangePercent = result?.priceChangePercent;
             break;
           }
 
@@ -136,7 +142,10 @@ export class PriceService {
               this.logger.warn('Cannot fetch gold price: no exchange rate');
               break;
             }
-            newPrice = await this.yahooProvider.fetchGoldPriceKRW(usdKrwRate);
+            const goldResult = await this.yahooProvider.fetchGoldPriceKRW(usdKrwRate);
+            newPrice = goldResult?.price ?? null;
+            priceChange = goldResult?.priceChange;
+            priceChangePercent = goldResult?.priceChangePercent;
             break;
           }
 
@@ -158,6 +167,8 @@ export class PriceService {
             where: { assetId: asset.id },
             data: {
               currentPrice: newPrice,
+              priceChange: priceChange ?? undefined,
+              priceChangePercent: priceChangePercent ?? undefined,
               priceUpdatedAt: new Date(),
             },
           });
@@ -247,23 +258,32 @@ export class PriceService {
 
     const oldPrice = asset.holding?.currentPrice ?? 0;
     let newPrice: number | null = null;
+    let priceChange: number | undefined = undefined;
+    let priceChangePercent: number | undefined = undefined;
 
     try {
       switch (asset.type) {
         case 'KOREAN_STOCK': {
           const result = await this.koreanProvider.fetchPrice(asset.ticker!);
           newPrice = result?.price ?? null;
+          priceChange = result?.priceChange;
+          priceChangePercent = result?.priceChangePercent;
           break;
         }
         case 'OVERSEAS_STOCK': {
           const result = await this.yahooProvider.fetchPrice(asset.ticker!);
           newPrice = result?.price ?? null;
+          priceChange = result?.priceChange;
+          priceChangePercent = result?.priceChangePercent;
           break;
         }
         case 'GOLD': {
           const usdKrwRate = await this.getExchangeRate();
           if (usdKrwRate) {
-            newPrice = await this.yahooProvider.fetchGoldPriceKRW(usdKrwRate);
+            const goldResult = await this.yahooProvider.fetchGoldPriceKRW(usdKrwRate);
+            newPrice = goldResult?.price ?? null;
+            priceChange = goldResult?.priceChange;
+            priceChangePercent = goldResult?.priceChangePercent;
           }
           break;
         }
@@ -274,6 +294,8 @@ export class PriceService {
           where: { assetId: asset.id },
           data: {
             currentPrice: newPrice,
+            priceChange: priceChange ?? undefined,
+            priceChangePercent: priceChangePercent ?? undefined,
             priceUpdatedAt: new Date(),
           },
         });
